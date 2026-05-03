@@ -1,9 +1,9 @@
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  ScrollView, ActivityIndicator,
+  ScrollView, ActivityIndicator, TextInput,
 } from 'react-native';
 import { openInstagram } from '../../lib/linking';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { useRouter } from 'expo-router';
@@ -11,7 +11,7 @@ import { supabase } from '../../lib/supabase';
 import { signOut } from '../../lib/auth';
 import { getMyActivities } from '../../lib/activities';
 import { getMyMatches } from '../../lib/matches';
-import type { Activity } from '../../lib/types';
+import type { Activity, Match } from '../../lib/types';
 
 function getTier(completed: number) {
   if (completed >= 10) return 'veteran';
@@ -24,11 +24,22 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function groupByDay(acts: Activity[]): { date: string; items: Activity[] }[] {
+  const map: Record<string, Activity[]> = {};
+  acts.forEach((a) => {
+    const key = formatDate(a.completed_at!);
+    if (!map[key]) map[key] = [];
+    map[key].push(a);
+  });
+  return Object.entries(map).map(([date, items]) => ({ date, items }));
+}
+
 export default function Profile() {
   const router = useRouter();
   const [profile, setProfile] = useState<{ display_name: string | null; instagram_handle: string | null; phone_number: string | null } | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [matchCount, setMatchCount] = useState(0);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(
@@ -43,7 +54,7 @@ export default function Profile() {
         ]);
         setProfile(prof);
         setActivities(acts);
-        setMatchCount(matches.length);
+        setMatches(matches);
         setLoading(false);
       });
     }, [])
@@ -63,10 +74,33 @@ export default function Profile() {
   }
 
   const displayName = profile?.display_name ?? 'you';
-  const done = activities.filter((a) => !!a.completed_at)
+  const allDone = activities
+    .filter((a) => !!a.completed_at)
     .sort((a, b) => new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime());
   const planCount = activities.length;
-  const tier = getTier(done.length);
+  const tier = getTier(allDone.length);
+
+  // Build lookup: activity id → match (for "completed with" info)
+  const activityMatchMap: Record<string, Match> = {};
+  matches.forEach((m) => {
+    if (m.activity1_id) activityMatchMap[m.activity1_id] = m;
+    if (m.activity2_id) activityMatchMap[m.activity2_id] = m;
+  });
+
+  const q = searchQuery.trim().toLowerCase();
+  const filteredDone = q
+    ? allDone.filter((a) => {
+        const matchedName = activityMatchMap[a.id]?.other_profile?.display_name?.toLowerCase() ?? '';
+        const dateStr = formatDate(a.completed_at!).toLowerCase();
+        return (
+          a.name.toLowerCase().includes(q) ||
+          matchedName.includes(q) ||
+          dateStr.includes(q)
+        );
+      })
+    : allDone;
+
+  const groupedDone = groupByDay(filteredDone);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -101,37 +135,64 @@ export default function Profile() {
           </TouchableOpacity>
           <View style={styles.statDivider} />
           <TouchableOpacity style={styles.stat} onPress={() => router.push('/(tabs)')}>
-            <Text style={styles.statNum}>{done.length}</Text>
+            <Text style={styles.statNum}>{allDone.length}</Text>
             <Text style={styles.statLabel}>done</Text>
           </TouchableOpacity>
           <View style={styles.statDivider} />
           <TouchableOpacity style={styles.stat} onPress={() => router.push('/(tabs)/matches')}>
-            <Text style={styles.statNum}>{matchCount}</Text>
+            <Text style={styles.statNum}>{matches.length}</Text>
             <Text style={styles.statLabel}>matches</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Done list */}
-        <Text style={styles.sectionLabel}>done · {done.length}</Text>
-        {done.length === 0 ? (
+        {/* Activity log */}
+        <Text style={styles.sectionLabel}>done · {allDone.length}</Text>
+
+        {allDone.length > 0 && (
+          <View style={styles.searchWrap}>
+            <TextInput
+              style={[styles.searchInput, { outline: 'none' } as any]}
+              placeholder="search by person or date..."
+              placeholderTextColor="#ccc"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              clearButtonMode="while-editing"
+            />
+          </View>
+        )}
+
+        {allDone.length === 0 ? (
           <View style={styles.emptyDone}>
             <Text style={styles.emptyText}>nothing completed yet.</Text>
           </View>
+        ) : filteredDone.length === 0 ? (
+          <View style={styles.emptyDone}>
+            <Text style={styles.emptyText}>no results.</Text>
+          </View>
         ) : (
-          <View style={styles.doneList}>
-            {done.map((item, i) => (
-              <View
-                key={item.id}
-                style={[styles.doneRow, i === done.length - 1 && styles.doneRowLast]}
-              >
-                <View style={styles.doneLeft}>
-                  <Text style={styles.doneName}>{item.name}</Text>
-                  <Text style={styles.doneMeta}>
-                    {item.category.toLowerCase()}
-                    {item.completed_at ? ` · ${formatDate(item.completed_at)}` : ''}
-                  </Text>
+          <View style={styles.logWrap}>
+            {groupedDone.map(({ date, items }) => (
+              <View key={date}>
+                <View style={styles.dayDivider}>
+                  <Text style={styles.dayLabel}>{date}</Text>
+                  <View style={styles.dayLine} />
                 </View>
-                {item.is_private && <Text style={styles.lockIcon}>🔒</Text>}
+                {items.map((item) => {
+                  const match = activityMatchMap[item.id];
+                  const withName = match?.other_profile?.display_name;
+                  return (
+                    <View key={item.id} style={styles.logRow}>
+                      <View style={styles.logLeft}>
+                        <Text style={styles.logName}>{item.name}</Text>
+                        <Text style={styles.logMeta}>
+                          {item.category.toLowerCase()}
+                          {withName ? ` · with ${withName}` : ' · solo'}
+                        </Text>
+                      </View>
+                      {item.is_private && <Text style={styles.lockIcon}>🔒</Text>}
+                    </View>
+                  );
+                })}
               </View>
             ))}
           </View>
@@ -197,6 +258,17 @@ const styles = StyleSheet.create({
     fontSize: 12, color: '#999',
     paddingHorizontal: 20, marginTop: 28, marginBottom: 8,
   },
+  searchWrap: {
+    marginHorizontal: 20,
+    marginBottom: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#ddd',
+  },
+  searchInput: {
+    fontSize: 13,
+    color: '#111',
+    paddingVertical: 10,
+  },
   emptyDone: {
     marginHorizontal: 20,
     paddingVertical: 24,
@@ -206,24 +278,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: { fontSize: 13, color: '#ccc', fontStyle: 'italic' },
-  doneList: {
-    marginHorizontal: 20,
-    borderWidth: 1,
-    borderColor: '#ececec',
-    borderRadius: 10,
-  },
-  doneRow: {
+  logWrap: { marginHorizontal: 20 },
+  dayDivider: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#f0f0f0',
+    marginTop: 20,
+    marginBottom: 6,
+    gap: 10,
   },
-  doneRowLast: { borderBottomWidth: 0 },
-  doneLeft: { flex: 1 },
-  doneName: { fontSize: 15, color: '#111' },
-  doneMeta: { fontSize: 12, color: '#bbb', marginTop: 2 },
+  dayLabel: { fontSize: 11, color: '#bbb', letterSpacing: 0.5 },
+  dayLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: '#ececec' },
+  logRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 11,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#f5f5f5',
+  },
+  logLeft: { flex: 1 },
+  logName: { fontSize: 15, color: '#111' },
+  logMeta: { fontSize: 12, color: '#bbb', marginTop: 2 },
   lockIcon: { fontSize: 11, opacity: 0.3 },
   section: {
     borderTopWidth: StyleSheet.hairlineWidth,

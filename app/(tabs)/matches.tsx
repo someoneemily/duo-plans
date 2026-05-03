@@ -2,7 +2,8 @@ import {
   View, Text, FlatList, StyleSheet, SafeAreaView,
   ActivityIndicator, RefreshControl,
 } from 'react-native';
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { getMyMatches } from '../../lib/matches';
 import type { Match } from '../../lib/types';
@@ -32,13 +33,15 @@ export default function Matches() {
     }
   }
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      const uid = data.session?.user.id ?? null;
-      setUserId(uid);
-      if (uid) load(uid);
-    });
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      supabase.auth.getSession().then(({ data }) => {
+        const uid = data.session?.user.id ?? null;
+        setUserId(uid);
+        if (uid) load(uid);
+      });
+    }, [])
+  );
 
   const onRefresh = useCallback(() => {
     if (!userId) return;

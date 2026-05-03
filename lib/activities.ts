@@ -113,7 +113,7 @@ export async function deleteActivity(activityId: string): Promise<void> {
 export async function getInterestedUsers(itemName: string): Promise<Profile[]> {
   const { data, error } = await supabase
     .from('activities')
-    .select('profiles(id, display_name, instagram_handle, avatar_url)')
+    .select('profiles(id, display_name, instagram_handle, phone_number, avatar_url)')
     .ilike('name', itemName)
     .eq('is_open', true)
     .is('completed_at', null);

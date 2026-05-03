@@ -1,12 +1,14 @@
 import {
   View, Text, FlatList, StyleSheet, SafeAreaView,
-  ActivityIndicator, RefreshControl,
+  ActivityIndicator, RefreshControl, TouchableOpacity, Linking,
 } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { getMyMatches } from '../../lib/matches';
-import type { Match } from '../../lib/types';
+import { getInterestedUsers } from '../../lib/activities';
+import { openInstagram } from '../../lib/linking';
+import type { Match, Profile } from '../../lib/types';
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -22,6 +24,9 @@ export default function Matches() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [interestedCache, setInterestedCache] = useState<Record<string, Profile[]>>({});
+  const [loadingId, setLoadingId] = useState<string | null>(null);
 
   async function load(uid: string) {
     try {
@@ -48,6 +53,23 @@ export default function Matches() {
     setRefreshing(true);
     load(userId);
   }, [userId]);
+
+  async function handleToggleExpand(match: Match) {
+    if (expandedId === match.id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(match.id);
+    if (!interestedCache[match.id]) {
+      setLoadingId(match.id);
+      try {
+        const users = await getInterestedUsers(match.activity_name);
+        setInterestedCache((c) => ({ ...c, [match.id]: users }));
+      } finally {
+        setLoadingId(null);
+      }
+    }
+  }
 
   if (loading) {
     return (
@@ -80,17 +102,63 @@ export default function Matches() {
             </Text>
           </View>
         }
-        renderItem={({ item }) => (
-          <View style={styles.row}>
-            <Text style={styles.accent}>✦</Text>
-            <View style={styles.rowBody}>
-              <Text style={styles.rowName}>{item.activity_name}</Text>
-              <Text style={styles.rowMeta}>
-                {item.other_profile?.display_name ?? 'someone'} also wants this · {timeAgo(item.created_at)}
-              </Text>
+        renderItem={({ item }) => {
+          const expanded = expandedId === item.id;
+          const interested = interestedCache[item.id] ?? [];
+          const isLoading = loadingId === item.id;
+
+          return (
+            <View>
+              <TouchableOpacity
+                style={styles.row}
+                onPress={() => handleToggleExpand(item)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.accent}>✦</Text>
+                <View style={styles.rowBody}>
+                  <Text style={styles.rowName}>{item.activity_name}</Text>
+                  <Text style={styles.rowMeta}>
+                    {item.other_profile?.display_name ?? 'someone'} also wants this · {timeAgo(item.created_at)}
+                  </Text>
+                </View>
+                <Text style={styles.chevron}>{expanded ? '−' : '+'}</Text>
+              </TouchableOpacity>
+
+              {expanded && (
+                <View style={styles.expandedBody}>
+                  {isLoading ? (
+                    <ActivityIndicator color="#ccc" size="small" />
+                  ) : interested.length === 0 ? (
+                    <Text style={styles.noOneText}>no one listed yet</Text>
+                  ) : (
+                    <>
+                      <Text style={styles.interestedLabel}>interested · {interested.length}</Text>
+                      {interested.map((profile) => (
+                        <View key={profile.id} style={styles.personRow}>
+                          <Text style={styles.personName}>{profile.display_name ?? 'someone'}</Text>
+                          <View style={styles.contactRow}>
+                            {profile.instagram_handle ? (
+                              <TouchableOpacity onPress={() => openInstagram(profile.instagram_handle!)}>
+                                <Text style={styles.contactLink}>
+                                  @{profile.instagram_handle.replace(/^@/, '')}
+                                </Text>
+                              </TouchableOpacity>
+                            ) : null}
+                            {profile.phone_number ? (
+                              <TouchableOpacity onPress={() => Linking.openURL(`tel:${profile.phone_number}`)}>
+                                <Text style={styles.contactLink}>{profile.phone_number}</Text>
+                              </TouchableOpacity>
+                            ) : null}
+                          </View>
+                        </View>
+                      ))}
+                    </>
+                  )}
+                </View>
+              )}
             </View>
-          </View>
-        )}
+          );
+        }}
       />
     </SafeAreaView>
   );
@@ -130,8 +198,32 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ececec',
     gap: 12,
   },
-  accent: { fontSize: 12, color: '#c9a0dc', marginTop: 2 },
+  accent: { fontSize: 12, color: '#c9a0dc', marginTop: 3 },
   rowBody: { flex: 1 },
   rowName: { fontSize: 15, color: '#111', marginBottom: 3 },
   rowMeta: { fontSize: 12, color: '#bbb' },
+  chevron: { fontSize: 16, color: '#ccc', marginTop: 1 },
+  expandedBody: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
+    backgroundColor: '#fafafa',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#ececec',
+    gap: 12,
+  },
+  interestedLabel: { fontSize: 11, color: '#bbb', letterSpacing: 0.5 },
+  personRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  personName: { fontSize: 14, color: '#111' },
+  contactRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  contactLink: {
+    fontSize: 13,
+    color: '#c9a0dc',
+    textDecorationLine: 'underline',
+  },
+  noOneText: { fontSize: 13, color: '#bbb', fontStyle: 'italic' },
 });

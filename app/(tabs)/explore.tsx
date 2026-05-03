@@ -1,11 +1,12 @@
 import {
   View, Text, TextInput, FlatList, TouchableOpacity,
-  StyleSheet, SafeAreaView, Alert, Linking, ActivityIndicator,
+  StyleSheet, SafeAreaView, Alert, ActivityIndicator,
 } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { addActivity, getMyActivities, getOpenActivities, deleteActivity, getInterestedUsers } from '../../lib/activities';
+import { openInstagram } from '../../lib/linking';
 import type { Activity, Category, Profile } from '../../lib/types';
 
 const CATEGORIES = ['all', 'restaurant', 'experience', 'travel'];
@@ -149,9 +150,6 @@ export default function Explore() {
     }
   }
 
-  function openInstagram(handle: string) {
-    Linking.openURL(`https://instagram.com/${handle.replace(/^@/, '')}`);
-  }
 
   const filtered = feed.filter((item) => {
     const matchesQuery = item.name.toLowerCase().includes(query.toLowerCase());

@@ -1,7 +1,8 @@
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  ScrollView, ActivityIndicator, Linking,
+  ScrollView, ActivityIndicator,
 } from 'react-native';
+import { openInstagram } from '../../lib/linking';
 import { useEffect, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
@@ -81,7 +82,7 @@ export default function Profile() {
           <Text style={styles.tier}>{tier}</Text>
           {profile?.instagram_handle ? (
             <TouchableOpacity
-              onPress={() => Linking.openURL(`https://instagram.com/${profile.instagram_handle!.replace(/^@/, '')}`)}
+              onPress={() => openInstagram(profile.instagram_handle!)}
               style={{ marginTop: 10 }}
             >
               <Text style={styles.igHandle}>@{profile.instagram_handle.replace(/^@/, '')}</Text>

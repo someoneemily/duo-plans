@@ -1,6 +1,6 @@
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  SafeAreaView, ActivityIndicator, ScrollView, Alert, TextInput,
+  SafeAreaView, ActivityIndicator, ScrollView, TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -154,16 +154,8 @@ export default function MyPlans() {
   }
 
   async function handleDelete(item: Activity) {
-    Alert.alert('', `Remove "${item.name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove', style: 'destructive',
-        onPress: async () => {
-          await deleteActivity(item.id);
-          setActivities((prev) => prev.filter((a) => a.id !== item.id));
-        },
-      },
-    ]);
+    setActivities((prev) => prev.filter((a) => a.id !== item.id));
+    await deleteActivity(item.id);
   }
 
   async function handleUpdate(item: Activity, name: string) {

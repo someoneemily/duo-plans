@@ -3,6 +3,7 @@ import {
   ScrollView, ActivityIndicator, Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import LinkText from '../../components/LinkText';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { getActivity, toggleOpen, deleteActivity, markAsCompleted, getMatchesForActivity } from '../../lib/activities';
@@ -86,7 +87,7 @@ export default function ActivityDetail() {
         <View style={styles.hero}>
           <Text style={styles.category}>{activity.category}</Text>
           <Text style={styles.name}>{activity.name}</Text>
-          {activity.notes ? <Text style={styles.notes}>{activity.notes}</Text> : null}
+          {activity.notes ? <LinkText style={styles.notes}>{activity.notes}</LinkText> : null}
         </View>
 
         {isOwner && (

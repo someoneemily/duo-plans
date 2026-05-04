@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
   search: {
     borderWidth: 1, borderColor: '#ececec', borderRadius: 20,
     paddingHorizontal: 16, paddingVertical: 10,
-    fontSize: 14, color: '#111',
+    fontSize: 16, color: '#111',
   },
   chips: { flexDirection: 'row', paddingHorizontal: 20, gap: 8, marginBottom: 20, flexWrap: 'wrap' },
   chip: { paddingHorizontal: 14, paddingVertical: 6, borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 20 },

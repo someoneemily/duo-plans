@@ -67,7 +67,7 @@ function PlanRow({
         {editingName ? (
           <TextInput
             ref={inputRef}
-            style={[styles.planName, styles.nameInput, { outline: 'none' } as any]}
+            style={[styles.planName, styles.nameInput, { outline: 'none', fontSize: 16 } as any]}
             value={draftName}
             onChangeText={setDraftName}
             onBlur={handleNameBlur}

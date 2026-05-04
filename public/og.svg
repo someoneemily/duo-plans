@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#fdf9ff"/>
+  <!-- overlapping circles -->
+  <circle cx="530" cy="270" r="210" fill="#c9a0dc" opacity="0.6"/>
+  <circle cx="670" cy="270" r="210" fill="#c9a0dc" opacity="0.6"/>
+  <!-- wordmark -->
+  <text
+    x="600" y="555"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="76"
+    font-weight="400"
+    fill="#111111"
+    text-anchor="middle"
+    letter-spacing="-1"
+  >duo plans</text>
+  <text
+    x="600" y="608"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="28"
+    font-style="italic"
+    fill="#aaaaaa"
+    text-anchor="middle"
+  >do things together.</text>
+</svg>

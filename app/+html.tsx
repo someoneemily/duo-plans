@@ -10,8 +10,24 @@ export default function Root({ children }: { children: React.ReactNode }) {
           name="viewport"
           content="width=device-width, initial-scale=1, shrink-to-fit=no, maximum-scale=1"
         />
+        <title>duo plans</title>
+
+        {/* Favicon */}
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+        {/* Link preview / Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="duo plans" />
+        <meta property="og:description" content="do things together." />
+        <meta property="og:image" content="/og.svg" />
+
+        {/* Twitter card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="duo plans" />
+        <meta name="twitter:description" content="do things together." />
+        <meta name="twitter:image" content="/og.svg" />
+
         <ScrollViewStyleReset />
-        {/* iOS Safari zooms when input font-size < 16px — force it globally */}
         <style>{`input, textarea, select { font-size: 16px !important; }`}</style>
       </head>
       <body>{children}</body>

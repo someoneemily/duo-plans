@@ -88,7 +88,12 @@ export default function Matches() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ccc" />}
         ListHeaderComponent={
           <View>
-            <Text style={styles.pageTitle}>matches activity</Text>
+            <View style={styles.titleRow}>
+              <Text style={styles.pageTitle}>matches activity</Text>
+              <TouchableOpacity onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.refreshBtn}>
+                <Text style={styles.refreshIcon}>↻</Text>
+              </TouchableOpacity>
+            </View>
             <Text style={styles.sectionLabel}>
               {matches.length > 0 ? `${matches.length} connection${matches.length > 1 ? 's' : ''}` : 'connections'}
             </Text>
@@ -168,6 +173,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   list: { paddingBottom: 40 },
+  titleRow: { position: 'relative', justifyContent: 'center', alignItems: 'center' },
+  refreshBtn: { position: 'absolute', right: 20, top: 28 },
+  refreshIcon: { fontSize: 18, color: '#ccc' },
   pageTitle: {
     fontFamily: 'Georgia',
     fontSize: 26,

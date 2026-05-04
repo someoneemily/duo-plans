@@ -196,7 +196,12 @@ export default function MyPlans() {
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ccc" />}
       >
-        <Text style={styles.pageTitle}>my plans</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.pageTitle}>my plans</Text>
+          <TouchableOpacity onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.refreshBtn}>
+            <Text style={styles.refreshIcon}>↻</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Created */}
         <Text style={styles.sectionLabel}>created</Text>
@@ -288,6 +293,9 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   rowCenter: { flex: 1 },
   scroll: { paddingBottom: 60 },
+  titleRow: { position: 'relative', justifyContent: 'center', alignItems: 'center' },
+  refreshBtn: { position: 'absolute', right: 20, top: 28 },
+  refreshIcon: { fontSize: 18, color: '#ccc' },
   pageTitle: {
     fontFamily: 'Georgia',
     fontSize: 26,

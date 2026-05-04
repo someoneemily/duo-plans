@@ -75,6 +75,7 @@ export default function Explore() {
   const [interestedCache, setInterestedCache] = useState<Record<string, Profile[]>>({});
   const [loadingName, setLoadingName] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [completedSelfNames, setCompletedSelfNames] = useState<Set<string>>(new Set());
 
   async function refresh(uid: string) {
     const [myActs, openActs] = await Promise.all([
@@ -87,6 +88,11 @@ export default function Explore() {
     });
     setSavedMap(map);
     const myOpenActs = myActs.filter((a) => a.is_open && !a.completed_at);
+    // Self-created activities the owner has completed should not appear in their explore
+    const selfCompleted = new Set(
+      myActs.filter((a) => a.completed_at && a.source === 'self').map((a) => a.name.toLowerCase())
+    );
+    setCompletedSelfNames(selfCompleted);
     setFeed(buildFeed(openActs, myOpenActs));
     setRefreshing(false);
   }
@@ -154,6 +160,7 @@ export default function Explore() {
   }
 
   const filtered = feed.filter((item) => {
+    if (completedSelfNames.has(item.name.toLowerCase())) return false;
     const matchesQuery = item.name.toLowerCase().includes(query.toLowerCase());
     const matchesCategory = activeCategory === 'all' || item.category.toLowerCase() === activeCategory;
     return matchesQuery && matchesCategory;
@@ -168,7 +175,12 @@ export default function Explore() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ccc" />}
         ListHeaderComponent={
           <View>
-            <Text style={styles.pageTitle}>explore</Text>
+            <View style={styles.titleRow}>
+              <Text style={styles.pageTitle}>explore</Text>
+              <TouchableOpacity onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.refreshBtn}>
+                <Text style={styles.refreshIcon}>↻</Text>
+              </TouchableOpacity>
+            </View>
             <View style={styles.searchWrap}>
               <TextInput
                 style={[styles.search, { outline: 'none' } as any]}
@@ -274,6 +286,9 @@ export default function Explore() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   list: { paddingBottom: 40 },
+  titleRow: { position: 'relative', justifyContent: 'center', alignItems: 'center' },
+  refreshBtn: { position: 'absolute', right: 20, top: 28 },
+  refreshIcon: { fontSize: 18, color: '#ccc' },
   pageTitle: {
     fontFamily: 'Georgia',
     fontSize: 26,

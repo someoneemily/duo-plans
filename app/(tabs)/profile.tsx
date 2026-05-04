@@ -158,7 +158,12 @@ export default function Profile() {
           keyboardShouldPersistTaps="handled"
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ccc" />}
         >
-        <Text style={styles.pageTitle}>profile</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.pageTitle}>profile</Text>
+          <TouchableOpacity onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.refreshBtn}>
+            <Text style={styles.refreshIcon}>↻</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Identity */}
         <View style={styles.identity}>
@@ -359,6 +364,9 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     fontWeight: '400',
   },
+  titleRow: { position: 'relative', justifyContent: 'center', alignItems: 'center' },
+  refreshBtn: { position: 'absolute', right: 20, top: 28 },
+  refreshIcon: { fontSize: 18, color: '#ccc' },
   identity: { alignItems: 'center', paddingBottom: 28 },
   avatar: {
     width: 64, height: 64, borderRadius: 32,

@@ -1,6 +1,6 @@
 import {
   View, Text, TextInput, FlatList, TouchableOpacity,
-  StyleSheet, SafeAreaView, Alert, ActivityIndicator,
+  StyleSheet, SafeAreaView, Alert, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
@@ -74,6 +74,7 @@ export default function Explore() {
   const [expandedName, setExpandedName] = useState<string | null>(null);
   const [interestedCache, setInterestedCache] = useState<Record<string, Profile[]>>({});
   const [loadingName, setLoadingName] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   async function refresh(uid: string) {
     const [myActs, openActs] = await Promise.all([
@@ -87,7 +88,14 @@ export default function Explore() {
     setSavedMap(map);
     const myOpenActs = myActs.filter((a) => a.is_open && !a.completed_at);
     setFeed(buildFeed(openActs, myOpenActs));
+    setRefreshing(false);
   }
+
+  const onRefresh = useCallback(() => {
+    if (!userId) return;
+    setRefreshing(true);
+    refresh(userId);
+  }, [userId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -157,6 +165,7 @@ export default function Explore() {
         data={filtered}
         keyExtractor={(item) => item.name.toLowerCase()}
         contentContainerStyle={styles.list}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ccc" />}
         ListHeaderComponent={
           <View>
             <Text style={styles.pageTitle}>explore</Text>

@@ -1,6 +1,6 @@
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  SafeAreaView, ActivityIndicator, ScrollView, TextInput,
+  SafeAreaView, ActivityIndicator, ScrollView, TextInput, RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -112,6 +112,7 @@ export default function MyPlans() {
   const router = useRouter();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [celebrating, setCelebrating] = useState<Activity | null>(null);
 
@@ -121,8 +122,15 @@ export default function MyPlans() {
       setActivities(data);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }
+
+  const onRefresh = useCallback(() => {
+    if (!userId) return;
+    setRefreshing(true);
+    load(userId);
+  }, [userId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -184,7 +192,10 @@ export default function MyPlans() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ccc" />}
+      >
         <Text style={styles.pageTitle}>my plans</Text>
 
         {/* Created */}

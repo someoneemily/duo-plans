@@ -1,6 +1,6 @@
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  ScrollView, ActivityIndicator, TextInput,
+  ScrollView, ActivityIndicator, TextInput, RefreshControl,
 } from 'react-native';
 import { openInstagram } from '../../lib/linking';
 import { useState } from 'react';
@@ -49,21 +49,35 @@ export default function Profile() {
   const [interestedCache, setInterestedCache] = useState<Record<string, Profile[]>>({});
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  async function load(uid: string) {
+    const [{ data: prof }, acts, matchData] = await Promise.all([
+      supabase.from('profiles').select('display_name, instagram_handle, phone_number').eq('id', uid).single(),
+      getMyActivities(uid),
+      getMyMatches(uid),
+    ]);
+    setProfile(prof);
+    setActivities(acts);
+    setMatches(matchData);
+    setLoading(false);
+    setRefreshing(false);
+  }
+
+  const onRefresh = useCallback(() => {
+    if (!userId) return;
+    setRefreshing(true);
+    load(userId);
+  }, [userId]);
 
   useFocusEffect(
     useCallback(() => {
-      supabase.auth.getSession().then(async ({ data }) => {
+      supabase.auth.getSession().then(({ data }) => {
         const uid = data.session?.user.id;
         if (!uid) return;
-        const [{ data: prof }, acts, matches] = await Promise.all([
-          supabase.from('profiles').select('display_name, instagram_handle, phone_number').eq('id', uid).single(),
-          getMyActivities(uid),
-          getMyMatches(uid),
-        ]);
-        setProfile(prof);
-        setActivities(acts);
-        setMatches(matches);
-        setLoading(false);
+        setUserId(uid);
+        load(uid);
       });
     }, [])
   );
@@ -139,7 +153,11 @@ export default function Profile() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ccc" />}
+        >
         <Text style={styles.pageTitle}>profile</Text>
 
         {/* Identity */}

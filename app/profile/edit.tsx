@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { getProfile, updateProfile } from '../../lib/profile';
+import { validateHandle, validatePhone } from '../../lib/validate';
 
 export default function EditProfile() {
   const router = useRouter();
@@ -30,6 +31,10 @@ export default function EditProfile() {
   }, []);
 
   async function handleSave() {
+    const handleError = igHandle.trim() ? validateHandle(igHandle) : null;
+    const phoneError = phone.trim() ? validatePhone(phone) : null;
+    if (handleError) { Alert.alert('', handleError); return; }
+    if (phoneError) { Alert.alert('', phoneError); return; }
     setSaving(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();

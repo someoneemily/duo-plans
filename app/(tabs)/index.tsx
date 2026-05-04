@@ -8,6 +8,7 @@ import { useState, useCallback, useRef } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { getMyActivities, toggleOpen, deleteActivity, markAsCompleted, updateActivity } from '../../lib/activities';
+import { validateActivityName } from '../../lib/validate';
 import CompletionCelebration from '../../components/CompletionCelebration';
 import type { Activity } from '../../lib/types';
 
@@ -39,7 +40,7 @@ function PlanRow({
   function handleNameBlur() {
     setEditingName(false);
     const trimmed = draftName.trim();
-    if (trimmed && trimmed !== item.name) {
+    if (trimmed && trimmed !== item.name && !validateActivityName(trimmed)) {
       onUpdate(trimmed);
     } else {
       setDraftName(item.name);

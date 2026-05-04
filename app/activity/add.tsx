@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { addActivity } from '../../lib/activities';
+import { validateActivityName } from '../../lib/validate';
 import type { Category } from '../../lib/types';
 
 const CATEGORIES: Category[] = ['Restaurant', 'Experience', 'Travel', 'Other'];
@@ -23,6 +24,8 @@ export default function AddActivity() {
 
   async function handleSave() {
     if (!canSave) return;
+    const nameError = validateActivityName(name);
+    if (nameError) { Alert.alert('', nameError); return; }
     setSaving(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();

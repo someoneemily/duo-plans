@@ -160,8 +160,8 @@ export default function Profile() {
         >
         <View style={styles.titleRow}>
           <Text style={styles.pageTitle}>profile</Text>
-          <TouchableOpacity onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.refreshBtn}>
-            <Text style={styles.refreshIcon}>↻</Text>
+          <TouchableOpacity onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.refreshBtn} disabled={refreshing}>
+            {refreshing ? <ActivityIndicator size="small" color="#ccc" /> : <Text style={styles.refreshIcon}>↻</Text>}
           </TouchableOpacity>
         </View>
 
@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   searchInput: {
-    fontSize: 13,
+    fontSize: 16,
     color: '#111',
     paddingVertical: 10,
   },

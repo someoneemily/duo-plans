@@ -90,8 +90,8 @@ export default function Matches() {
           <View>
             <View style={styles.titleRow}>
               <Text style={styles.pageTitle}>matches activity</Text>
-              <TouchableOpacity onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.refreshBtn}>
-                <Text style={styles.refreshIcon}>↻</Text>
+              <TouchableOpacity onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.refreshBtn} disabled={refreshing}>
+                {refreshing ? <ActivityIndicator size="small" color="#ccc" /> : <Text style={styles.refreshIcon}>↻</Text>}
               </TouchableOpacity>
             </View>
             <Text style={styles.sectionLabel}>

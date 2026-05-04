@@ -86,14 +86,16 @@ function PlanRow({
       {/* Right actions — hidden when done */}
       {!isDone && (
         <View style={styles.right}>
-          <TouchableOpacity
-            onPress={onToggleOpen}
-            style={[styles.duoChip, item.is_open && styles.duoChipOn]}
-          >
-            <Text style={[styles.duoChipText, item.is_open && styles.duoChipTextOn]}>
-              {item.is_open ? 'open' : 'solo'}
-            </Text>
-          </TouchableOpacity>
+          {item.source !== 'explore' && (
+            <TouchableOpacity
+              onPress={onToggleOpen}
+              style={[styles.duoChip, item.is_open && styles.duoChipOn]}
+            >
+              <Text style={[styles.duoChipText, item.is_open && styles.duoChipTextOn]}>
+                {item.is_open ? 'open' : 'solo'}
+              </Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             onPress={onDelete}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}

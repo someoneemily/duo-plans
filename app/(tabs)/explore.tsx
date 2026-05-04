@@ -2,7 +2,7 @@ import {
   View, Text, TextInput, FlatList, TouchableOpacity,
   StyleSheet, SafeAreaView, Alert, ActivityIndicator,
 } from 'react-native';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { addActivity, getMyActivities, getOpenActivities, deleteActivity, getInterestedUsers } from '../../lib/activities';
@@ -12,23 +12,26 @@ import type { Activity, Category, Profile } from '../../lib/types';
 const CATEGORIES = ['all', 'restaurant', 'experience', 'travel'];
 
 const CATALOG: { name: string; category: Category }[] = [
-  { name: 'Nobu Malibu',          category: 'Restaurant' },
-  { name: 'Hot air balloon ride', category: 'Experience' },
-  { name: 'Bali trip',            category: 'Travel' },
+  { name: 'Nobu Malibu',            category: 'Restaurant' },
+  { name: 'Hot air balloon ride',   category: 'Experience' },
+  { name: 'Bali trip',              category: 'Travel' },
   { name: 'Sourdough baking class', category: 'Experience' },
-  { name: 'Osteria Mozza',        category: 'Restaurant' },
-  { name: 'Tokyo food tour',      category: 'Travel' },
+  { name: 'Osteria Mozza',          category: 'Restaurant' },
+  { name: 'Tokyo food tour',        category: 'Travel' },
 ];
 
 interface FeedItem {
   name: string;
   category: Category;
   interestedCount: number;
+  isOwn: boolean;
 }
 
-function buildFeed(openActs: Activity[]): FeedItem[] {
+function buildFeed(openActs: Activity[], myOpenActs: Activity[]): FeedItem[] {
+  const myNames = new Set(myOpenActs.map((a) => a.name.toLowerCase()));
+
   const countByName: Record<string, { count: number; category: Category }> = {};
-  openActs.forEach((a) => {
+  [...openActs, ...myOpenActs].forEach((a) => {
     const key = a.name.toLowerCase();
     if (!countByName[key]) countByName[key] = { count: 0, category: a.category };
     countByName[key].count++;
@@ -40,14 +43,22 @@ function buildFeed(openActs: Activity[]): FeedItem[] {
   CATALOG.forEach((c) => {
     const key = c.name.toLowerCase();
     seen.add(key);
-    items.push({ name: c.name, category: c.category, interestedCount: countByName[key]?.count ?? 0 });
+    items.push({ name: c.name, category: c.category, interestedCount: countByName[key]?.count ?? 0, isOwn: myNames.has(key) });
   });
 
   openActs.forEach((a) => {
     const key = a.name.toLowerCase();
     if (!seen.has(key)) {
       seen.add(key);
-      items.push({ name: a.name, category: a.category, interestedCount: countByName[key].count });
+      items.push({ name: a.name, category: a.category, interestedCount: countByName[key].count, isOwn: false });
+    }
+  });
+
+  myOpenActs.forEach((a) => {
+    const key = a.name.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      items.push({ name: a.name, category: a.category, interestedCount: countByName[key].count, isOwn: true });
     }
   });
 
@@ -64,27 +75,28 @@ export default function Explore() {
   const [interestedCache, setInterestedCache] = useState<Record<string, Profile[]>>({});
   const [loadingName, setLoadingName] = useState<string | null>(null);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUserId(data.session?.user.id ?? null);
+  async function refresh(uid: string) {
+    const [myActs, openActs] = await Promise.all([
+      getMyActivities(uid),
+      getOpenActivities(uid),
+    ]);
+    const map: Record<string, string> = {};
+    myActs.filter((a) => !a.completed_at).forEach((a) => {
+      map[a.name.toLowerCase()] = a.id;
     });
-  }, []);
+    setSavedMap(map);
+    const myOpenActs = myActs.filter((a) => a.is_open && !a.completed_at);
+    setFeed(buildFeed(openActs, myOpenActs));
+  }
 
   useFocusEffect(
     useCallback(() => {
-      if (!userId) return;
-      Promise.all([
-        getMyActivities(userId),
-        getOpenActivities(userId),
-      ]).then(([myActs, openActs]) => {
-        const map: Record<string, string> = {};
-        myActs.filter((a) => !a.completed_at).forEach((a) => {
-          map[a.name.toLowerCase()] = a.id;
-        });
-        setSavedMap(map);
-        setFeed(buildFeed(openActs));
+      supabase.auth.getSession().then(({ data }) => {
+        const uid = data.session?.user.id ?? null;
+        setUserId(uid);
+        if (uid) refresh(uid);
       });
-    }, [userId])
+    }, [])
   );
 
   async function invalidateAndRefresh(nameKey: string, itemName: string) {
@@ -102,10 +114,7 @@ export default function Explore() {
 
   async function handleToggleExpand(item: FeedItem) {
     const key = item.name.toLowerCase();
-    if (expandedName === key) {
-      setExpandedName(null);
-      return;
-    }
+    if (expandedName === key) { setExpandedName(null); return; }
     setExpandedName(key);
     if (!interestedCache[key]) {
       setLoadingName(key);
@@ -119,37 +128,22 @@ export default function Explore() {
   }
 
   async function handleToggleSave(item: FeedItem) {
-    if (!userId) return;
+    if (!userId || item.isOwn) return;
     const key = item.name.toLowerCase();
     const existingId = savedMap[key];
-
     if (existingId) {
       await deleteActivity(existingId);
-      setSavedMap((m) => { const n = { ...m }; delete n[key]; return n; });
-      // Rebuild feed after unsave
-      const openActs = await getOpenActivities(userId);
-      setFeed(buildFeed(openActs));
-      await invalidateAndRefresh(key, item.name);
     } else {
       try {
-        const activity = await addActivity({
-          userId,
-          name: item.name,
-          category: item.category,
-          isOpen: true,
-          source: 'explore',
-        });
-        setSavedMap((m) => ({ ...m, [key]: activity.id }));
-        // Rebuild feed after save
-        const openActs = await getOpenActivities(userId);
-        setFeed(buildFeed(openActs));
-        await invalidateAndRefresh(key, item.name);
+        await addActivity({ userId, name: item.name, category: item.category, isOpen: true, source: 'explore' });
       } catch (e: any) {
         Alert.alert('', e.message ?? 'Could not save');
+        return;
       }
     }
+    await refresh(userId);
+    await invalidateAndRefresh(key, item.name);
   }
-
 
   const filtered = feed.filter((item) => {
     const matchesQuery = item.name.toLowerCase().includes(query.toLowerCase());
@@ -207,21 +201,30 @@ export default function Explore() {
             <View>
               <TouchableOpacity style={styles.row} onPress={() => handleToggleExpand(item)} activeOpacity={0.7}>
                 <View style={styles.rowLeft}>
-                  <Text style={styles.rowName}>{item.name}</Text>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.rowName}>{item.name}</Text>
+                    {item.isOwn && (
+                      <View style={styles.ownBadge}>
+                        <Text style={styles.ownBadgeText}>yours</Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={styles.rowMeta}>
                     {item.category.toLowerCase()}
                     {item.interestedCount > 0 ? ` · ${item.interestedCount} interested` : ''}
                   </Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.heartBtn}
-                  onPress={() => handleToggleSave(item)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Text style={[styles.heartIcon, hearted && styles.heartIconActive]}>
-                    {hearted ? '♥' : '♡'}
-                  </Text>
-                </TouchableOpacity>
+                {!item.isOwn && (
+                  <TouchableOpacity
+                    style={styles.heartBtn}
+                    onPress={() => handleToggleSave(item)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Text style={[styles.heartIcon, hearted && styles.heartIconActive]}>
+                      {hearted ? '♥' : '♡'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </TouchableOpacity>
 
               {expanded && (
@@ -229,7 +232,9 @@ export default function Explore() {
                   {isLoading ? (
                     <ActivityIndicator color="#ccc" size="small" />
                   ) : interested.length === 0 ? (
-                    <Text style={styles.noOneText}>no one interested yet — be the first</Text>
+                    <Text style={styles.noOneText}>
+                      {item.isOwn ? 'no one else interested yet' : 'no one interested yet — be the first'}
+                    </Text>
                   ) : (
                     <>
                       <Text style={styles.interestedLabel}>interested · {interested.length}</Text>
@@ -287,7 +292,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#ececec',
   },
   rowLeft: { flex: 1 },
-  rowName: { fontSize: 15, color: '#111', marginBottom: 3 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
+  rowName: { fontSize: 15, color: '#111' },
+  ownBadge: {
+    paddingHorizontal: 7, paddingVertical: 2,
+    borderRadius: 10, borderWidth: 1, borderColor: '#c9a0dc',
+  },
+  ownBadgeText: { fontSize: 10, color: '#c9a0dc', letterSpacing: 0.5 },
   rowMeta: { fontSize: 12, color: '#bbb' },
   heartBtn: { padding: 4 },
   heartIcon: { fontSize: 20, color: '#ddd' },

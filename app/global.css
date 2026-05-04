@@ -1,4 +1,1 @@
-/* Prevent iOS Safari zoom on input focus (triggers when font-size < 16px) */
-input, textarea, select {
-  font-size: 16px !important;
-}
+/* intentionally empty — iOS zoom is handled via maximum-scale=1 in +html.tsx viewport meta */

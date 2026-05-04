@@ -28,7 +28,6 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <meta name="twitter:image" content="/og.svg" />
 
         <ScrollViewStyleReset />
-        <style>{`input, textarea, select { font-size: 16px !important; }`}</style>
       </head>
       <body>{children}</body>
     </html>

@@ -1,6 +1,6 @@
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  SafeAreaView, KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
+  SafeAreaView, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
@@ -13,22 +13,29 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  function switchMode(next: 'signin' | 'signup') {
+    setMode(next);
+    setAuthError(null);
+  }
 
   async function handleSubmit() {
     if (!email || !password) return;
+    if (mode === 'signup' && !displayName) return;
+    setAuthError(null);
     setLoading(true);
     try {
       if (mode === 'signin') {
         const { error } = await signInWithEmail(email, password);
         if (error) throw error;
       } else {
-        if (!displayName) return;
         const { error } = await signUpWithEmail(email, password, displayName);
         if (error) throw error;
       }
       router.replace('/(tabs)');
     } catch (err: any) {
-      Alert.alert('', err.message ?? 'Something went wrong');
+      setAuthError(err.message ?? 'Something went wrong. Try again.');
     } finally {
       setLoading(false);
     }
@@ -44,42 +51,44 @@ export default function Auth() {
           <Text style={styles.tagline}>do things together.</Text>
 
           <View style={styles.toggle}>
-            <TouchableOpacity onPress={() => setMode('signin')}>
+            <TouchableOpacity onPress={() => switchMode('signin')}>
               <Text style={[styles.toggleOpt, mode === 'signin' && styles.toggleActive]}>sign in</Text>
             </TouchableOpacity>
             <Text style={styles.toggleSep}> · </Text>
-            <TouchableOpacity onPress={() => setMode('signup')}>
+            <TouchableOpacity onPress={() => switchMode('signup')}>
               <Text style={[styles.toggleOpt, mode === 'signup' && styles.toggleActive]}>create account</Text>
             </TouchableOpacity>
           </View>
 
           {mode === 'signup' && (
             <TextInput
-              style={styles.input}
+              style={[styles.input, { outline: 'none' } as any]}
               placeholder="your name"
               placeholderTextColor="#ccc"
               value={displayName}
-              onChangeText={setDisplayName}
+              onChangeText={(v) => { setDisplayName(v); setAuthError(null); }}
               autoCapitalize="words"
             />
           )}
           <TextInput
-            style={styles.input}
+            style={[styles.input, { outline: 'none' } as any]}
             placeholder="email"
             placeholderTextColor="#ccc"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(v) => { setEmail(v); setAuthError(null); }}
             keyboardType="email-address"
             autoCapitalize="none"
           />
           <TextInput
-            style={styles.input}
+            style={[styles.input, { outline: 'none' } as any]}
             placeholder="password"
             placeholderTextColor="#ccc"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(v) => { setPassword(v); setAuthError(null); }}
             secureTextEntry
           />
+
+          {authError ? <Text style={styles.errorText}>{authError}</Text> : null}
 
           <TouchableOpacity
             style={[styles.button, !canSubmit && styles.buttonDisabled]}
@@ -119,16 +128,22 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#e0e0e0',
     paddingVertical: 13,
-    fontSize: 14,
+    fontSize: 16,
     color: '#111',
     marginBottom: 16,
+  },
+  errorText: {
+    fontSize: 13,
+    color: '#e05252',
+    marginBottom: 12,
+    lineHeight: 18,
   },
   button: {
     borderWidth: 1,
     borderColor: '#111',
     paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 24,
+    marginTop: 16,
     borderRadius: 24,
   },
   buttonDisabled: { borderColor: '#e0e0e0' },

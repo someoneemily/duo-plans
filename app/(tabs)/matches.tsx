@@ -88,7 +88,7 @@ export default function Matches() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ccc" />}
         ListHeaderComponent={
           <View>
-            <Text style={styles.pageTitle}>matches</Text>
+            <Text style={styles.pageTitle}>matches activity</Text>
             <Text style={styles.sectionLabel}>
               {matches.length > 0 ? `${matches.length} connection${matches.length > 1 ? 's' : ''}` : 'connections'}
             </Text>

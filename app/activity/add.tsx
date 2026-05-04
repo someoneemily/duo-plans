@@ -19,13 +19,21 @@ export default function AddActivity() {
   const [notes, setNotes] = useState('');
   const [isOpen, setIsOpen] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
 
-  const canSave = name.trim().length > 0 && category.length > 0;
+  function validate(): boolean {
+    let ok = true;
+    const ne = validateActivityName(name);
+    if (ne) { setNameError(ne); ok = false; }
+    else setNameError(null);
+    if (!category) { setCategoryError('Please pick a category.'); ok = false; }
+    else setCategoryError(null);
+    return ok;
+  }
 
   async function handleSave() {
-    if (!canSave) return;
-    const nameError = validateActivityName(name);
-    if (nameError) { Alert.alert('', nameError); return; }
+    if (!validate()) return;
     setSaving(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -53,14 +61,15 @@ export default function AddActivity() {
           <Text style={styles.pageTitle}>add plan</Text>
 
           <TextInput
-            style={[styles.nameInput, { outline: 'none' } as any]}
+            style={[styles.nameInput, { outline: 'none' } as any, nameError ? styles.inputError : null]}
             placeholder="what do you want to do?"
             placeholderTextColor="#ccc"
             value={name}
-            onChangeText={setName}
+            onChangeText={(v) => { setName(v); if (nameError) setNameError(null); }}
             autoFocus
             multiline
           />
+          {nameError ? <Text style={styles.fieldError}>{nameError}</Text> : null}
 
           <Text style={styles.label}>category</Text>
           <View style={styles.categories}>
@@ -68,7 +77,7 @@ export default function AddActivity() {
               <TouchableOpacity
                 key={cat}
                 style={[styles.chip, category === cat && styles.chipActive]}
-                onPress={() => setCategory(cat)}
+                onPress={() => { setCategory(cat); if (categoryError) setCategoryError(null); }}
               >
                 <Text style={[styles.chipText, category === cat && styles.chipTextActive]}>
                   {cat.toLowerCase()}
@@ -76,6 +85,7 @@ export default function AddActivity() {
               </TouchableOpacity>
             ))}
           </View>
+          {categoryError ? <Text style={styles.fieldError}>{categoryError}</Text> : null}
 
           <Text style={styles.label}>notes</Text>
           <TextInput
@@ -98,9 +108,9 @@ export default function AddActivity() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.save, !canSave && styles.saveDisabled]}
+            style={[styles.save, saving && styles.saveDisabled]}
             onPress={handleSave}
-            disabled={!canSave || saving}
+            disabled={saving}
           >
             {saving ? (
               <ActivityIndicator color="#111" />
@@ -128,12 +138,19 @@ const styles = StyleSheet.create({
   nameInput: {
     fontSize: 18,
     color: '#111',
-    marginBottom: 32,
+    marginBottom: 4,
     lineHeight: 26,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#ececec',
     paddingBottom: 16,
     fontFamily: 'Georgia',
+  },
+  inputError: { borderBottomColor: '#e05252' },
+  fieldError: {
+    fontSize: 12,
+    color: '#e05252',
+    marginBottom: 20,
+    marginTop: 2,
   },
   label: {
     fontSize: 11,
@@ -141,8 +158,9 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     textTransform: 'uppercase',
     marginBottom: 12,
+    marginTop: 12,
   },
-  categories: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 28 },
+  categories: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 7,
@@ -154,7 +172,7 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 13, color: '#999' },
   chipTextActive: { color: '#fff' },
   notes: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#111',
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#ececec',

@@ -7,6 +7,7 @@ import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { addActivity, getMyActivities, getOpenActivities, deleteActivity, getInterestedUsers } from '../../lib/activities';
 import { openInstagram } from '../../lib/linking';
+import LinkText from '../../components/LinkText';
 import type { Activity, Category, Profile } from '../../lib/types';
 
 const CATEGORIES = ['all', 'restaurant', 'experience', 'travel'];
@@ -25,6 +26,7 @@ interface FeedItem {
   category: Category;
   interestedCount: number;
   isOwn: boolean;
+  notes: string | null;
 }
 
 function buildFeed(openActs: Activity[], myOpenActs: Activity[]): FeedItem[] {
@@ -37,20 +39,27 @@ function buildFeed(openActs: Activity[], myOpenActs: Activity[]): FeedItem[] {
     countByName[key].count++;
   });
 
+  // Collect first available notes per activity name (own notes take priority)
+  const notesByName: Record<string, string | null> = {};
+  [...myOpenActs, ...openActs].forEach((a) => {
+    const key = a.name.toLowerCase();
+    if (a.notes && !notesByName[key]) notesByName[key] = a.notes;
+  });
+
   const items: FeedItem[] = [];
   const seen = new Set<string>();
 
   CATALOG.forEach((c) => {
     const key = c.name.toLowerCase();
     seen.add(key);
-    items.push({ name: c.name, category: c.category, interestedCount: countByName[key]?.count ?? 0, isOwn: myNames.has(key) });
+    items.push({ name: c.name, category: c.category, interestedCount: countByName[key]?.count ?? 0, isOwn: myNames.has(key), notes: notesByName[key] ?? null });
   });
 
   openActs.forEach((a) => {
     const key = a.name.toLowerCase();
     if (!seen.has(key)) {
       seen.add(key);
-      items.push({ name: a.name, category: a.category, interestedCount: countByName[key].count, isOwn: false });
+      items.push({ name: a.name, category: a.category, interestedCount: countByName[key].count, isOwn: false, notes: notesByName[key] ?? null });
     }
   });
 
@@ -58,7 +67,7 @@ function buildFeed(openActs: Activity[], myOpenActs: Activity[]): FeedItem[] {
     const key = a.name.toLowerCase();
     if (!seen.has(key)) {
       seen.add(key);
-      items.push({ name: a.name, category: a.category, interestedCount: countByName[key].count, isOwn: true });
+      items.push({ name: a.name, category: a.category, interestedCount: countByName[key].count, isOwn: true, notes: notesByName[key] ?? null });
     }
   });
 
@@ -250,6 +259,9 @@ export default function Explore() {
 
               {expanded && (
                 <View style={styles.expandedBody}>
+                  {item.notes ? (
+                    <LinkText style={styles.expandedNotes}>{item.notes}</LinkText>
+                  ) : null}
                   {isLoading ? (
                     <ActivityIndicator color="#ccc" size="small" />
                   ) : interested.length === 0 ? (
@@ -333,6 +345,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#ececec',
     gap: 10,
   },
+  expandedNotes: { fontSize: 13, color: '#666', lineHeight: 19 },
   interestedLabel: { fontSize: 11, color: '#bbb', letterSpacing: 0.5, marginBottom: 2 },
   personRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   personName: { fontSize: 14, color: '#111' },

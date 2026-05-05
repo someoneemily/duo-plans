@@ -1,0 +1,83 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+async function callLLM(prompt: string): Promise<string> {
+  const provider = Deno.env.get('LLM_PROVIDER') ?? 'openrouter'
+  const apiKey = Deno.env.get('LLM_API_KEY')!
+  const model = Deno.env.get('LLM_MODEL')!
+
+  if (provider === 'anthropic') {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 512,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    })
+    const json = await res.json()
+    return json.content?.[0]?.text ?? '[]'
+  }
+
+  // Default: OpenRouter (OpenAI-compatible)
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  })
+  const json = await res.json()
+  return json.choices?.[0]?.message?.content ?? '[]'
+}
+
+Deno.serve(async (req) => {
+  const authHeader = req.headers.get('Authorization')
+  if (!authHeader) return new Response('Unauthorized', { status: 401 })
+
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
+    { global: { headers: { Authorization: authHeader } } }
+  )
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return new Response('Unauthorized', { status: 401 })
+
+  const { data: activities } = await supabase
+    .from('activities')
+    .select('name, category')
+    .eq('user_id', user.id)
+    .is('completed_at', null)
+
+  const existing = (activities ?? []).map((a: { name: string; category: string }) => `${a.name} (${a.category})`).join(', ')
+
+  const prompt = `A user has these activity plans: ${existing || 'none yet'}.
+Suggest 3 new activities inspired by their taste but slightly more adventurous — a step up in experience, not just more of the same.
+Rules:
+- Activities must be safe, public, and social (things you'd do with friends)
+- Do NOT repeat anything already in their list
+- Lean into the vibe of what they already like but push it a little further
+Reply with ONLY a JSON array: [{"name": "...", "category": "Restaurant"|"Experience"|"Travel"|"Other"}, ...]
+No explanation, no markdown, just the JSON array.`
+
+  const raw = await callLLM(prompt)
+
+  // Strip markdown code fences if the model wraps output in them
+  const text = raw.replace(/```(?:json)?\n?/g, '').trim()
+
+  let suggestions: { name: string; category: string }[] = []
+  try { suggestions = JSON.parse(text) } catch { suggestions = [] }
+
+  return new Response(JSON.stringify({ suggestions }), {
+    headers: { 'Content-Type': 'application/json' },
+  })
+})

@@ -4,13 +4,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { getMyActivities, toggleOpen, deleteActivity, markAsCompleted, updateActivity } from '../../lib/activities';
+import { getMyActivities, addActivity, toggleOpen, deleteActivity, markAsCompleted, updateActivity } from '../../lib/activities';
 import { validateActivityName } from '../../lib/validate';
 import CompletionCelebration from '../../components/CompletionCelebration';
-import type { Activity } from '../../lib/types';
+import type { Activity, Category } from '../../lib/types';
 
 function PlanRow({
   item,
@@ -115,6 +115,11 @@ export default function MyPlans() {
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [celebrating, setCelebrating] = useState<Activity | null>(null);
+  const [suggestions, setSuggestions] = useState<{ name: string; category: Category }[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [refreshCount, setRefreshCount] = useState(0);
+  const MAX_REFRESHES = 3;
+  const hasFetchedSuggestions = useRef(false);
 
   async function load(uid: string) {
     try {
@@ -178,6 +183,44 @@ export default function MyPlans() {
     }
   }
 
+  async function fetchSuggestions() {
+    setLoadingSuggestions(true);
+    setSuggestions([]);
+    try {
+      const { data, error } = await supabase.functions.invoke('suggest-activities');
+      if (!error && data?.suggestions) setSuggestions(data.suggestions);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  }
+
+  function dismissSuggestion(name: string) {
+    setSuggestions((s) => s.filter((x) => x.name !== name));
+  }
+
+  async function refreshSuggestions() {
+    if (refreshCount >= MAX_REFRESHES) return;
+    setRefreshCount((c) => c + 1);
+    await fetchSuggestions();
+  }
+
+  async function handleAddSuggestion(s: { name: string; category: Category }) {
+    if (!userId) return;
+    dismissSuggestion(s.name);
+    try {
+      await addActivity({ userId, name: s.name, category: s.category, isOpen: false, source: 'self' });
+      const data = await getMyActivities(userId);
+      setActivities(data);
+    } catch { /* ignore */ }
+  }
+
+  useEffect(() => {
+    if (userId && !hasFetchedSuggestions.current) {
+      hasFetchedSuggestions.current = true;
+      fetchSuggestions();
+    }
+  }, [userId]);
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -233,6 +276,53 @@ export default function MyPlans() {
             >
               <Text style={styles.outlineBtnText}>+ ADD</Text>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Suggestions */}
+        {(loadingSuggestions || suggestions.length > 0 || refreshCount < MAX_REFRESHES) && (
+          <View style={{ marginTop: 36 }}>
+            <View style={styles.suggestionHeader}>
+              <Text style={styles.sectionLabel}>suggested for you</Text>
+              <TouchableOpacity
+                onPress={refreshSuggestions}
+                disabled={refreshCount >= MAX_REFRESHES || loadingSuggestions}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={styles.suggestionRefreshBtn}
+              >
+                <Text style={[styles.refreshIcon, (refreshCount >= MAX_REFRESHES || loadingSuggestions) && styles.refreshIconDisabled]}>↻</Text>
+              </TouchableOpacity>
+            </View>
+            {loadingSuggestions ? (
+              <View style={styles.suggestionLoading}>
+                <ActivityIndicator size="small" color="#ccc" />
+              </View>
+            ) : suggestions.length > 0 ? (
+              <View style={styles.planList}>
+                {suggestions.map((s) => (
+                  <View key={s.name} style={styles.suggestionRow}>
+                    <View style={styles.rowCenter}>
+                      <Text style={styles.planName}>{s.name}</Text>
+                      <Text style={styles.planMeta}>{s.category.toLowerCase()}</Text>
+                    </View>
+                    <View style={styles.right}>
+                      <TouchableOpacity
+                        style={styles.suggestionAddBtn}
+                        onPress={() => handleAddSuggestion(s)}
+                      >
+                        <Text style={styles.suggestionAddText}>+ add</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => dismissSuggestion(s.name)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Text style={styles.suggestionDismiss}>×</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : null}
           </View>
         )}
 
@@ -367,4 +457,30 @@ const styles = StyleSheet.create({
   duoChipTextOn: {
     color: '#fff',
   },
+  suggestionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 20,
+  },
+  suggestionRefreshBtn: { paddingBottom: 10 },
+  suggestionLoading: { paddingVertical: 20, alignItems: 'center' },
+  suggestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#f0f0f0',
+  },
+  suggestionAddBtn: {
+    borderWidth: 1,
+    borderColor: '#c9a0dc',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  suggestionAddText: { fontSize: 11, color: '#c9a0dc', letterSpacing: 0.5 },
+  suggestionDismiss: { fontSize: 18, color: '#ccc', lineHeight: 20 },
+  refreshIconDisabled: { color: '#e8e8e8' },
 });

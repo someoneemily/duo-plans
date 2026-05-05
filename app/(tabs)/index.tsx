@@ -188,6 +188,7 @@ export default function MyPlans() {
     setSuggestions([]);
     try {
       const { data, error } = await supabase.functions.invoke('suggest-activities');
+      console.log('[suggestions] data:', JSON.stringify(data), 'error:', JSON.stringify(error));
       if (!error && data?.suggestions) setSuggestions(data.suggestions);
     } finally {
       setLoadingSuggestions(false);
@@ -246,42 +247,9 @@ export default function MyPlans() {
           </TouchableOpacity>
         </View>
 
-        {/* Created */}
-        <Text style={styles.sectionLabel}>created</Text>
-        {created.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <TouchableOpacity style={styles.plusBox} onPress={() => router.push('/activity/add')}>
-              <Text style={styles.plusText}>+</Text>
-            </TouchableOpacity>
-            <Text style={styles.emptyHint}>Nothing added yet.</Text>
-            <TouchableOpacity style={styles.outlineBtn} onPress={() => router.push('/activity/add')}>
-              <Text style={styles.outlineBtnText}>ADD A PLAN</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.planList}>
-            {created.map((item) => (
-              <PlanRow
-                key={item.id}
-                item={item}
-                onToggleOpen={() => handleToggleOpen(item)}
-                onComplete={() => handleComplete(item)}
-                onDelete={() => handleDelete(item)}
-                onUpdate={(name) => handleUpdate(item, name)}
-              />
-            ))}
-            <TouchableOpacity
-              style={[styles.outlineBtn, { alignSelf: 'flex-start', margin: 16 }]}
-              onPress={() => router.push('/activity/add')}
-            >
-              <Text style={styles.outlineBtnText}>+ ADD</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
         {/* Suggestions */}
         {(loadingSuggestions || suggestions.length > 0 || refreshCount < MAX_REFRESHES) && (
-          <View style={{ marginTop: 36 }}>
+          <View style={{ marginBottom: 36 }}>
             <View style={styles.suggestionHeader}>
               <Text style={styles.sectionLabel}>suggested for you</Text>
               <TouchableOpacity
@@ -323,6 +291,39 @@ export default function MyPlans() {
                 ))}
               </View>
             ) : null}
+          </View>
+        )}
+
+        {/* Created */}
+        <Text style={styles.sectionLabel}>created</Text>
+        {created.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <TouchableOpacity style={styles.plusBox} onPress={() => router.push('/activity/add')}>
+              <Text style={styles.plusText}>+</Text>
+            </TouchableOpacity>
+            <Text style={styles.emptyHint}>Nothing added yet.</Text>
+            <TouchableOpacity style={styles.outlineBtn} onPress={() => router.push('/activity/add')}>
+              <Text style={styles.outlineBtnText}>ADD A PLAN</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.planList}>
+            {created.map((item) => (
+              <PlanRow
+                key={item.id}
+                item={item}
+                onToggleOpen={() => handleToggleOpen(item)}
+                onComplete={() => handleComplete(item)}
+                onDelete={() => handleDelete(item)}
+                onUpdate={(name) => handleUpdate(item, name)}
+              />
+            ))}
+            <TouchableOpacity
+              style={[styles.outlineBtn, { alignSelf: 'flex-start', margin: 16 }]}
+              onPress={() => router.push('/activity/add')}
+            >
+              <Text style={styles.outlineBtnText}>+ ADD</Text>
+            </TouchableOpacity>
           </View>
         )}
 

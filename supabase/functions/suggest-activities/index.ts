@@ -1,5 +1,15 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+const FALLBACK_SUGGESTIONS = [
+  { name: 'Omakase dinner', category: 'Restaurant' },
+  { name: 'Pottery class', category: 'Experience' },
+]
+
 async function callLLM(prompt: string): Promise<string> {
   const provider = Deno.env.get('LLM_PROVIDER') ?? 'openrouter'
   const apiKey = Deno.env.get('LLM_API_KEY')!
@@ -36,10 +46,16 @@ async function callLLM(prompt: string): Promise<string> {
     }),
   })
   const json = await res.json()
+  console.log('[suggest-activities] OpenRouter response:', JSON.stringify(json))
+  if (json.error?.code === 429) throw new Error('rate_limited')
   return json.choices?.[0]?.message?.content ?? '[]'
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) return new Response('Unauthorized', { status: 401 })
 
@@ -51,6 +67,8 @@ Deno.serve(async (req) => {
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return new Response('Unauthorized', { status: 401 })
+
+  console.log('[suggest-activities] provider:', Deno.env.get('LLM_PROVIDER'), 'model:', Deno.env.get('LLM_MODEL'), 'key set:', !!Deno.env.get('LLM_API_KEY'))
 
   const { data: activities } = await supabase
     .from('activities')
@@ -69,15 +87,26 @@ Rules:
 Reply with ONLY a JSON array: [{"name": "...", "category": "Restaurant"|"Experience"|"Travel"|"Other"}, ...]
 No explanation, no markdown, just the JSON array.`
 
-  const raw = await callLLM(prompt)
+  const existingNames = new Set((activities ?? []).map((a: { name: string }) => a.name.toLowerCase()))
 
-  // Strip markdown code fences if the model wraps output in them
-  const text = raw.replace(/```(?:json)?\n?/g, '').trim()
+  const filterExisting = (list: { name: string; category: string }[]) =>
+    list.filter((s) => !existingNames.has(s.name.toLowerCase()))
 
-  let suggestions: { name: string; category: string }[] = []
-  try { suggestions = JSON.parse(text) } catch { suggestions = [] }
+  let suggestions: { name: string; category: string }[]
+  try {
+    const raw = await callLLM(prompt)
+    console.log('[suggest-activities] prompt:', prompt)
+    console.log('[suggest-activities] raw LLM output:', raw)
+    const text = raw.replace(/```(?:json)?\n?/g, '').trim()
+    const parsed = JSON.parse(text)
+    const filtered = filterExisting(Array.isArray(parsed) ? parsed : [])
+    suggestions = filtered.length > 0 ? filtered : filterExisting(FALLBACK_SUGGESTIONS)
+  } catch {
+    console.log('[suggest-activities] using fallback suggestions')
+    suggestions = filterExisting(FALLBACK_SUGGESTIONS)
+  }
 
   return new Response(JSON.stringify({ suggestions }), {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
 })

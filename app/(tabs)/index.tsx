@@ -118,7 +118,6 @@ export default function MyPlans() {
   const [suggestions, setSuggestions] = useState<{ name: string; category: Category }[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [refreshCount, setRefreshCount] = useState(0);
-  const MAX_REFRESHES = 3;
   const hasFetchedSuggestions = useRef(false);
 
   async function load(uid: string) {
@@ -200,7 +199,6 @@ export default function MyPlans() {
   }
 
   async function refreshSuggestions() {
-    if (refreshCount >= MAX_REFRESHES) return;
     setRefreshCount((c) => c + 1);
     await fetchSuggestions();
   }
@@ -248,17 +246,17 @@ export default function MyPlans() {
         </View>
 
         {/* Suggestions */}
-        {(loadingSuggestions || suggestions.length > 0 || refreshCount < MAX_REFRESHES) && (
+        {(loadingSuggestions || suggestions.length > 0) && (
           <View style={{ marginBottom: 36 }}>
             <View style={styles.suggestionHeader}>
               <Text style={styles.sectionLabel}>suggested for you</Text>
               <TouchableOpacity
                 onPress={refreshSuggestions}
-                disabled={refreshCount >= MAX_REFRESHES || loadingSuggestions}
+                disabled={loadingSuggestions}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 style={styles.suggestionRefreshBtn}
               >
-                <Text style={[styles.refreshIcon, (refreshCount >= MAX_REFRESHES || loadingSuggestions) && styles.refreshIconDisabled]}>↻</Text>
+                <Text style={[styles.refreshIcon, loadingSuggestions && styles.refreshIconDisabled]}>↻</Text>
               </TouchableOpacity>
             </View>
             {loadingSuggestions ? (

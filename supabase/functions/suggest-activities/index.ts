@@ -5,10 +5,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const FALLBACK_SUGGESTIONS = [
+const FALLBACK_POOL = [
   { name: 'Omakase dinner', category: 'Restaurant' },
   { name: 'Pottery class', category: 'Experience' },
+  { name: 'Weekend in Ojai', category: 'Travel' },
+  { name: 'Rooftop bar crawl', category: 'Experience' },
+  { name: 'Farmers market brunch', category: 'Restaurant' },
+  { name: 'Sunset hike', category: 'Experience' },
+  { name: 'Natural wine tasting', category: 'Restaurant' },
+  { name: 'Day trip to Santa Barbara', category: 'Travel' },
+  { name: 'Cooking class', category: 'Experience' },
+  { name: 'Night at a jazz club', category: 'Experience' },
 ]
+
+function pickFallbacks(existingNames: Set<string>) {
+  const available = FALLBACK_POOL.filter((s) => !existingNames.has(s.name.toLowerCase()))
+  // Shuffle and return up to 3
+  return available.sort(() => Math.random() - 0.5).slice(0, 3)
+}
 
 async function callLLM(prompt: string): Promise<string> {
   const provider = Deno.env.get('LLM_PROVIDER') ?? 'openrouter'
@@ -100,10 +114,10 @@ No explanation, no markdown, just the JSON array.`
     const text = raw.replace(/```(?:json)?\n?/g, '').trim()
     const parsed = JSON.parse(text)
     const filtered = filterExisting(Array.isArray(parsed) ? parsed : [])
-    suggestions = filtered.length > 0 ? filtered : filterExisting(FALLBACK_SUGGESTIONS)
+    suggestions = filtered.length > 0 ? filtered : pickFallbacks(existingNames)
   } catch {
     console.log('[suggest-activities] using fallback suggestions')
-    suggestions = filterExisting(FALLBACK_SUGGESTIONS)
+    suggestions = pickFallbacks(existingNames)
   }
 
   return new Response(JSON.stringify({ suggestions }), {

@@ -27,6 +27,7 @@ interface FeedItem {
   interestedCount: number;
   isOwn: boolean;
   notes: string | null;
+  latestCreatedAt: string | null;
 }
 
 function buildFeed(openActs: Activity[], myOpenActs: Activity[]): FeedItem[] {
@@ -46,20 +47,29 @@ function buildFeed(openActs: Activity[], myOpenActs: Activity[]): FeedItem[] {
     if (a.notes && !notesByName[key]) notesByName[key] = a.notes;
   });
 
+  // Track most recent created_at per name
+  const latestCreatedAt: Record<string, string> = {};
+  [...openActs, ...myOpenActs].forEach((a) => {
+    const key = a.name.toLowerCase();
+    if (!latestCreatedAt[key] || a.created_at > latestCreatedAt[key]) {
+      latestCreatedAt[key] = a.created_at;
+    }
+  });
+
   const items: FeedItem[] = [];
   const seen = new Set<string>();
 
   CATALOG.forEach((c) => {
     const key = c.name.toLowerCase();
     seen.add(key);
-    items.push({ name: c.name, category: c.category, interestedCount: countByName[key]?.count ?? 0, isOwn: myNames.has(key), notes: notesByName[key] ?? null });
+    items.push({ name: c.name, category: c.category, interestedCount: countByName[key]?.count ?? 0, isOwn: myNames.has(key), notes: notesByName[key] ?? null, latestCreatedAt: latestCreatedAt[key] ?? null });
   });
 
   openActs.forEach((a) => {
     const key = a.name.toLowerCase();
     if (!seen.has(key)) {
       seen.add(key);
-      items.push({ name: a.name, category: a.category, interestedCount: countByName[key].count, isOwn: false, notes: notesByName[key] ?? null });
+      items.push({ name: a.name, category: a.category, interestedCount: countByName[key].count, isOwn: false, notes: notesByName[key] ?? null, latestCreatedAt: latestCreatedAt[key] ?? null });
     }
   });
 
@@ -67,11 +77,18 @@ function buildFeed(openActs: Activity[], myOpenActs: Activity[]): FeedItem[] {
     const key = a.name.toLowerCase();
     if (!seen.has(key)) {
       seen.add(key);
-      items.push({ name: a.name, category: a.category, interestedCount: countByName[key].count, isOwn: true, notes: notesByName[key] ?? null });
+      items.push({ name: a.name, category: a.category, interestedCount: countByName[key].count, isOwn: true, notes: notesByName[key] ?? null, latestCreatedAt: latestCreatedAt[key] ?? null });
     }
   });
 
-  return items.sort((a, b) => b.interestedCount - a.interestedCount || a.name.localeCompare(b.name));
+  return items.sort((a, b) => {
+    // Items with a real created_at (from DB) come first, sorted newest first
+    if (a.latestCreatedAt && b.latestCreatedAt) return b.latestCreatedAt.localeCompare(a.latestCreatedAt);
+    if (a.latestCreatedAt) return -1;
+    if (b.latestCreatedAt) return 1;
+    // Catalog-only items (no DB entry) sorted alphabetically at the bottom
+    return a.name.localeCompare(b.name);
+  });
 }
 
 export default function Explore() {

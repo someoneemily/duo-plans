@@ -74,8 +74,8 @@ export default function Profile() {
   useFocusEffect(
     useCallback(() => {
       supabase.auth.getSession().then(({ data }) => {
-        const uid = data.session?.user.id;
-        if (!uid) return;
+        const uid = data.session?.user.id ?? null;
+        if (!uid) { router.replace('/auth'); return; }
         setUserId(uid);
         load(uid);
       });

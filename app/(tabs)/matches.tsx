@@ -3,7 +3,7 @@ import {
   ActivityIndicator, RefreshControl, TouchableOpacity, Linking,
 } from 'react-native';
 import { useState, useCallback } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { getMyMatches } from '../../lib/matches';
 import { getInterestedUsers } from '../../lib/activities';
@@ -20,6 +20,7 @@ function timeAgo(dateStr: string) {
 }
 
 export default function Matches() {
+  const router = useRouter();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -44,6 +45,7 @@ export default function Matches() {
         const uid = data.session?.user.id ?? null;
         setUserId(uid);
         if (uid) load(uid);
+        else router.replace('/auth');
       });
     }, [])
   );

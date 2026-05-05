@@ -35,6 +35,17 @@ export async function getOpenActivities(excludeUserId: string): Promise<Activity
   return data ?? [];
 }
 
+export async function getOpenActivitiesPublic(): Promise<Activity[]> {
+  const { data, error } = await supabase
+    .from('activities')
+    .select('*, profiles(id, display_name, avatar_url)')
+    .eq('is_open', true)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function addActivity(params: {
   userId: string;
   name: string;

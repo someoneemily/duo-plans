@@ -3,9 +3,9 @@ import {
   StyleSheet, SafeAreaView, Alert, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useState, useCallback } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { addActivity, getMyActivities, getOpenActivities, deleteActivity, getInterestedUsers } from '../../lib/activities';
+import { addActivity, getMyActivities, getOpenActivities, getOpenActivitiesPublic, deleteActivity, getInterestedUsers } from '../../lib/activities';
 import { openInstagram } from '../../lib/linking';
 import LinkText from '../../components/LinkText';
 import type { Activity, Category, Profile } from '../../lib/types';
@@ -92,6 +92,7 @@ function buildFeed(openActs: Activity[], myOpenActs: Activity[]): FeedItem[] {
 }
 
 export default function Explore() {
+  const router = useRouter();
   const [query, setQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [feed, setFeed] = useState<FeedItem[]>([]);
@@ -103,28 +104,31 @@ export default function Explore() {
   const [refreshing, setRefreshing] = useState(false);
   const [completedSelfNames, setCompletedSelfNames] = useState<Set<string>>(new Set());
 
-  async function refresh(uid: string) {
-    const [myActs, openActs] = await Promise.all([
-      getMyActivities(uid),
-      getOpenActivities(uid),
-    ]);
-    const map: Record<string, string> = {};
-    myActs.filter((a) => !a.completed_at).forEach((a) => {
-      map[a.name.toLowerCase()] = a.id;
-    });
-    setSavedMap(map);
-    const myOpenActs = myActs.filter((a) => a.is_open && !a.completed_at);
-    // Self-created activities the owner has completed should not appear in their explore
-    const selfCompleted = new Set(
-      myActs.filter((a) => a.completed_at && a.source === 'self').map((a) => a.name.toLowerCase())
-    );
-    setCompletedSelfNames(selfCompleted);
-    setFeed(buildFeed(openActs, myOpenActs));
+  async function refresh(uid: string | null) {
+    if (uid) {
+      const [myActs, openActs] = await Promise.all([
+        getMyActivities(uid),
+        getOpenActivities(uid),
+      ]);
+      const map: Record<string, string> = {};
+      myActs.filter((a) => !a.completed_at).forEach((a) => {
+        map[a.name.toLowerCase()] = a.id;
+      });
+      setSavedMap(map);
+      const myOpenActs = myActs.filter((a) => a.is_open && !a.completed_at);
+      const selfCompleted = new Set(
+        myActs.filter((a) => a.completed_at && a.source === 'self').map((a) => a.name.toLowerCase())
+      );
+      setCompletedSelfNames(selfCompleted);
+      setFeed(buildFeed(openActs, myOpenActs));
+    } else {
+      const openActs = await getOpenActivitiesPublic();
+      setFeed(buildFeed(openActs, []));
+    }
     setRefreshing(false);
   }
 
   const onRefresh = useCallback(() => {
-    if (!userId) return;
     setRefreshing(true);
     refresh(userId);
   }, [userId]);
@@ -134,7 +138,7 @@ export default function Explore() {
       supabase.auth.getSession().then(({ data }) => {
         const uid = data.session?.user.id ?? null;
         setUserId(uid);
-        if (uid) refresh(uid);
+        refresh(uid);
       });
     }, [])
   );
@@ -153,6 +157,7 @@ export default function Explore() {
   }
 
   async function handleToggleExpand(item: FeedItem) {
+    if (!userId) { router.push('/auth'); return; }
     const key = item.name.toLowerCase();
     if (expandedName === key) { setExpandedName(null); return; }
     setExpandedName(key);
@@ -168,7 +173,8 @@ export default function Explore() {
   }
 
   async function handleToggleSave(item: FeedItem) {
-    if (!userId || item.isOwn) return;
+    if (!userId) { router.push('/auth'); return; }
+    if (item.isOwn) return;
     const key = item.name.toLowerCase();
     const existingId = savedMap[key];
     if (existingId) {

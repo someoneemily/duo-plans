@@ -142,6 +142,7 @@ export default function MyPlans() {
         const uid = data.session?.user.id ?? null;
         setUserId(uid);
         if (uid) load(uid);
+        else router.replace('/auth');
       });
     }, [])
   );

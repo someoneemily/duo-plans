@@ -19,10 +19,10 @@ export default function RootLayout() {
   useEffect(() => {
     if (session === undefined) return; // still loading
     const inAuth = segments[0] === 'auth';
-    const inExplore = segments[0] === '(tabs)' && segments[1] === 'explore';
-    if (!session && !inAuth && !inExplore) {
-      router.replace('/(tabs)/explore');
-    } else if (session && inAuth) {
+    const inPublic = segments[0] === '(public)';
+    if (!session && !inAuth && !inPublic) {
+      router.replace('/(public)/explore');
+    } else if (session && (inAuth || inPublic)) {
       router.replace('/(tabs)');
     }
   }, [session, segments]);
@@ -34,6 +34,7 @@ export default function RootLayout() {
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="auth" />
+        <Stack.Screen name="(public)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="activity/[id]"

@@ -20,7 +20,7 @@ const CARDS = [
   { name: 'Champagne & oysters',  category: 'restaurant', tagline: 'The classic duo'               },
 ];
 
-const STACK_TOP = Math.round(SH * 0.175);
+const STACK_TOP = Math.round(SH * 0.5 - CARD_H / 2);
 const STACK_LEFT = Math.round((SW - CARD_W) / 2);
 
 function cardTranslateY(i: number, scrollY: Animated.Value): Animated.AnimatedInterpolation<number> {

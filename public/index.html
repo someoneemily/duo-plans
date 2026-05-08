@@ -22,9 +22,14 @@
     <meta name="twitter:image" content="/og.svg" />
 
     <style id="expo-reset">
-      html, body { height: 100%; }
+      html, body { height: 100%; margin: 0; padding: 0; overscroll-behavior: none; }
       body { overflow: hidden; }
-      #root { display: flex; height: 100%; flex: 1; }
+      #root {
+        display: flex;
+        height: -webkit-fill-available; /* iOS Safari < 15.4 fallback */
+        height: 100dvh;                 /* dynamic viewport: adapts as chrome shows/hides */
+        flex: 1;
+      }
     </style>
   </head>
   <body>

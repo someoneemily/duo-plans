@@ -33,6 +33,9 @@ export default function SignIn() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <SafeAreaView style={styles.container}>
+        <TouchableOpacity style={styles.back} onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Text style={styles.backText}>←</Text>
+        </TouchableOpacity>
         <View style={styles.inner}>
           <Text style={styles.wordmark}>duo plans</Text>
           <Text style={styles.tagline}>do things together.</Text>
@@ -76,6 +79,8 @@ export default function SignIn() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+  back: { position: 'absolute', top: 54, left: 22, zIndex: 10 },
+  backText: { fontSize: 22, color: '#bbb' },
   inner: { flex: 1, padding: 28, justifyContent: 'center' },
   wordmark: {
     fontFamily: 'Georgia',

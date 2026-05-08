@@ -2,19 +2,19 @@ import { supabase } from './supabase';
 import type { Match } from './types';
 
 export async function getMyMatches(userId: string): Promise<Match[]> {
+  // Only show matches where someone matched the user's existing activity
+  // (user2_id = the incumbent; user1_id = whoever triggered the match by saving second)
   const { data: matchRows, error } = await supabase
     .from('matches')
     .select('*')
-    .or(`user1_id.eq.${userId},user2_id.eq.${userId}`)
+    .eq('user2_id', userId)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
   if (!matchRows || matchRows.length === 0) return [];
 
-  // Collect the other person's user ID for each match
-  const otherIds = [...new Set(
-    matchRows.map((m) => m.user1_id === userId ? m.user2_id : m.user1_id)
-  )];
+  // The other person is always user1 (the one who triggered the match)
+  const otherIds = [...new Set(matchRows.map((m) => m.user1_id))];
 
   const { data: profiles } = await supabase
     .from('profiles')
@@ -25,6 +25,6 @@ export async function getMyMatches(userId: string): Promise<Match[]> {
 
   return matchRows.map((m) => ({
     ...m,
-    other_profile: profileMap[m.user1_id === userId ? m.user2_id : m.user1_id] ?? null,
+    other_profile: profileMap[m.user1_id] ?? null,
   }));
 }

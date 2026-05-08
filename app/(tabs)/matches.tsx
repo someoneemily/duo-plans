@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { getMyMatches } from '../../lib/matches';
 import { getInterestedUsers } from '../../lib/activities';
 import { openInstagram } from '../../lib/linking';
+import { markMatchesSeen } from '../../lib/matchBadge';
 import type { Match, Profile } from '../../lib/types';
 
 function timeAgo(dateStr: string) {
@@ -41,6 +42,7 @@ export default function Matches() {
 
   useFocusEffect(
     useCallback(() => {
+      markMatchesSeen();
       supabase.auth.getSession().then(({ data }) => {
         const uid = data.session?.user.id ?? null;
         setUserId(uid);

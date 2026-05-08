@@ -1,6 +1,9 @@
 import { Tabs } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, AppState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useRef, useState } from 'react';
+import { supabase } from '../../lib/supabase';
+import { subscribeMatchBadge, refreshMatchBadge } from '../../lib/matchBadge';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -12,6 +15,30 @@ const TAB_ICONS: Record<string, { active: IoniconsName; inactive: IoniconsName }
 };
 
 export default function TabsLayout() {
+  const [badgeCount, setBadgeCount] = useState(0);
+  const userIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const unsub = subscribeMatchBadge(setBadgeCount);
+
+    supabase.auth.getSession().then(({ data }) => {
+      const uid = data.session?.user.id ?? null;
+      userIdRef.current = uid;
+      if (uid) refreshMatchBadge(uid);
+    });
+
+    const appSub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && userIdRef.current) {
+        refreshMatchBadge(userIdRef.current);
+      }
+    });
+
+    return () => {
+      unsub();
+      appSub.remove();
+    };
+  }, []);
+
   return (
     <Tabs
       screenOptions={({ route }) => ({
@@ -29,7 +56,14 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="index"   options={{ title: 'home' }} />
       <Tabs.Screen name="explore" options={{ title: 'explore' }} />
-      <Tabs.Screen name="matches" options={{ title: 'matches' }} />
+      <Tabs.Screen
+        name="matches"
+        options={{
+          title: 'matches',
+          tabBarBadge: badgeCount > 0 ? badgeCount : undefined,
+          tabBarBadgeStyle: styles.badge,
+        }}
+      />
       <Tabs.Screen name="profile" options={{ title: 'profile' }} />
     </Tabs>
   );
@@ -49,5 +83,9 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     letterSpacing: 0.3,
     marginBottom: 6,
+  },
+  badge: {
+    backgroundColor: '#c9a0dc',
+    fontSize: 10,
   },
 });

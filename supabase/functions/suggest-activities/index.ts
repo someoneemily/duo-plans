@@ -63,8 +63,8 @@ async function callLLM(prompt: string): Promise<{ text: string; rawResponse: unk
     }),
   })
   const json = await res.json()
-  if (json.error?.code === 429) {
-    return { text: '[]', rawResponse: json, error: `rate_limited: ${json.error.message ?? ''}` }
+  if (json.error) {
+    return { text: '[]', rawResponse: json, error: `openrouter error ${json.error.code ?? ''}: ${json.error.message ?? JSON.stringify(json.error)}` }
   }
   const text = json.choices?.[0]?.message?.content ?? '[]'
   return { text, rawResponse: json }

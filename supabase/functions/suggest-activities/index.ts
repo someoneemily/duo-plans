@@ -6,16 +6,50 @@ const corsHeaders = {
 }
 
 const FALLBACK_POOL = [
+  // Restaurant
   { name: 'Omakase dinner', category: 'Restaurant' },
-  { name: 'Pottery class', category: 'Experience' },
-  { name: 'Weekend in Ojai', category: 'Travel' },
-  { name: 'Rooftop bar crawl', category: 'Experience' },
-  { name: 'Farmers market brunch', category: 'Restaurant' },
-  { name: 'Sunset hike', category: 'Experience' },
   { name: 'Natural wine tasting', category: 'Restaurant' },
-  { name: 'Day trip to Santa Barbara', category: 'Travel' },
+  { name: 'Farmers market brunch', category: 'Restaurant' },
+  { name: "Chef's tasting menu", category: 'Restaurant' },
+  { name: 'Late-night ramen run', category: 'Restaurant' },
+  { name: 'Champagne and oysters', category: 'Restaurant' },
+  { name: 'Dim sum crawl', category: 'Restaurant' },
+  { name: 'Speakeasy cocktail bar', category: 'Restaurant' },
+  { name: 'Rooftop dinner', category: 'Restaurant' },
+  { name: 'Private wine cellar tasting', category: 'Restaurant' },
+  // Experience
+  { name: 'Pottery class', category: 'Experience' },
+  { name: 'Rooftop bar crawl', category: 'Experience' },
+  { name: 'Sunset hike', category: 'Experience' },
   { name: 'Cooking class', category: 'Experience' },
   { name: 'Night at a jazz club', category: 'Experience' },
+  { name: 'Flower arranging workshop', category: 'Experience' },
+  { name: 'Perfume blending class', category: 'Experience' },
+  { name: 'Outdoor movie night', category: 'Experience' },
+  { name: 'Silent disco', category: 'Experience' },
+  { name: 'Sunrise yoga on the beach', category: 'Experience' },
+  { name: 'Axe throwing', category: 'Experience' },
+  { name: 'Escape room', category: 'Experience' },
+  { name: 'Improv comedy show', category: 'Experience' },
+  { name: 'Life drawing class', category: 'Experience' },
+  { name: 'Karaoke night', category: 'Experience' },
+  // Travel
+  { name: 'Weekend in Ojai', category: 'Travel' },
+  { name: 'Day trip to Santa Barbara', category: 'Travel' },
+  { name: 'Weekend in Palm Springs', category: 'Travel' },
+  { name: 'Road trip up the PCH', category: 'Travel' },
+  { name: 'Weekend in New Orleans', category: 'Travel' },
+  { name: 'Long weekend in Mexico City', category: 'Travel' },
+  { name: 'Ski trip to Mammoth', category: 'Travel' },
+  { name: 'Girls trip to Tulum', category: 'Travel' },
+  { name: 'Weekend in NYC', category: 'Travel' },
+  { name: 'Day trip to Joshua Tree', category: 'Travel' },
+  // Other
+  { name: 'Volunteer together', category: 'Other' },
+  { name: 'Take a photography walk', category: 'Other' },
+  { name: 'Visit a museum exhibit', category: 'Other' },
+  { name: 'Attend a live podcast taping', category: 'Other' },
+  { name: 'Go to a farmers market', category: 'Other' },
 ]
 
 function pickFallbacks(existingNames: Set<string>) {

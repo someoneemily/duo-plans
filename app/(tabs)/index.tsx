@@ -134,7 +134,6 @@ export default function MyPlans() {
   const [suggestions, setSuggestions] = useState<{ name: string; category: Category }[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [refreshCount, setRefreshCount] = useState(0);
-  const [debugInfo, setDebugInfo] = useState<any>(null);
   const hasFetchedSuggestions = useRef(false);
 
   async function load(uid: string) {
@@ -203,10 +202,8 @@ export default function MyPlans() {
   async function fetchSuggestions() {
     setLoadingSuggestions(true);
     setSuggestions([]);
-    setDebugInfo(null);
     try {
       const { data, error } = await supabase.functions.invoke('suggest-activities');
-      setDebugInfo({ invokeError: error ? JSON.stringify(error) : null, ...(data?._debug ?? {}) });
       if (!error && data?.suggestions) setSuggestions(data.suggestions);
     } finally {
       setLoadingSuggestions(false);
@@ -306,69 +303,7 @@ export default function MyPlans() {
                 </View>
               ))}
             </View>
-          ) : !loadingSuggestions && debugInfo ? (
-            <View style={styles.debugEmpty}>
-              <Text style={styles.debugEmptyText}>no suggestions returned — see debug below</Text>
-            </View>
           ) : null}
-
-          {/* Debug panel — shown after every fetch */}
-          {debugInfo && (
-            <View style={styles.debugPanel}>
-              <Text style={styles.debugTitle}>── debug ──</Text>
-
-              {debugInfo.invokeError && (
-                <View style={styles.debugBlock}>
-                  <Text style={styles.debugLabel}>INVOKE ERROR</Text>
-                  <Text style={styles.debugValue}>{debugInfo.invokeError}</Text>
-                </View>
-              )}
-
-              <View style={styles.debugBlock}>
-                <Text style={styles.debugLabel}>provider / model</Text>
-                <Text style={styles.debugValue}>{debugInfo.provider} · {debugInfo.model}</Text>
-              </View>
-
-              <View style={styles.debugBlock}>
-                <Text style={styles.debugLabel}>your activities sent to LLM</Text>
-                <Text style={styles.debugValue}>{debugInfo.existingActivities}</Text>
-              </View>
-
-              <View style={styles.debugBlock}>
-                <Text style={styles.debugLabel}>prompt sent</Text>
-                <Text style={styles.debugValue}>{debugInfo.prompt}</Text>
-              </View>
-
-              {debugInfo.llmError && (
-                <View style={styles.debugBlock}>
-                  <Text style={styles.debugLabel}>LLM ERROR</Text>
-                  <Text style={[styles.debugValue, { color: '#e05252' }]}>{debugInfo.llmError}</Text>
-                </View>
-              )}
-
-              <View style={styles.debugBlock}>
-                <Text style={styles.debugLabel}>raw LLM text returned</Text>
-                <Text style={styles.debugValue}>{debugInfo.parsedText ?? '(empty)'}</Text>
-              </View>
-
-              {debugInfo.parseError && (
-                <View style={styles.debugBlock}>
-                  <Text style={styles.debugLabel}>parse error</Text>
-                  <Text style={[styles.debugValue, { color: '#e05252' }]}>{debugInfo.parseError}</Text>
-                </View>
-              )}
-
-              <View style={styles.debugBlock}>
-                <Text style={styles.debugLabel}>used fallback?</Text>
-                <Text style={styles.debugValue}>{debugInfo.usedFallback ? 'yes' : 'no'}</Text>
-              </View>
-
-              <View style={styles.debugBlock}>
-                <Text style={styles.debugLabel}>full raw response from LLM API</Text>
-                <Text style={styles.debugValue}>{JSON.stringify(debugInfo.rawResponse, null, 2)}</Text>
-              </View>
-            </View>
-          )}
         </View>
 
         {/* Created */}
@@ -561,20 +496,4 @@ const styles = StyleSheet.create({
   suggestionAddText: { fontSize: 11, color: '#c9a0dc', letterSpacing: 0.5 },
   suggestionDismiss: { fontSize: 18, color: '#ccc', lineHeight: 20 },
   refreshIconDisabled: { color: '#e8e8e8' },
-  debugEmpty: { paddingHorizontal: 20, paddingTop: 4 },
-  debugEmptyText: { fontSize: 12, color: '#e05252', fontStyle: 'italic' },
-  debugPanel: {
-    marginHorizontal: 20,
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: '#f0e0e0',
-    borderRadius: 8,
-    padding: 12,
-    gap: 10,
-    backgroundColor: '#fffafa',
-  },
-  debugTitle: { fontSize: 11, color: '#ccc', letterSpacing: 0.8, textAlign: 'center', marginBottom: 4 },
-  debugBlock: { gap: 2 },
-  debugLabel: { fontSize: 10, color: '#bbb', letterSpacing: 0.8, textTransform: 'uppercase' },
-  debugValue: { fontSize: 11, color: '#555', lineHeight: 16, fontFamily: 'Courier' } as any,
 });

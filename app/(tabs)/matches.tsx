@@ -47,7 +47,7 @@ export default function Matches() {
         const uid = data.session?.user.id ?? null;
         setUserId(uid);
         if (uid) load(uid);
-        else router.replace('/auth');
+        else router.replace('/(public)/explore');
       });
     }, [])
   );

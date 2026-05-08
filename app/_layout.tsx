@@ -20,7 +20,7 @@ export default function RootLayout() {
     if (session === undefined) return; // still loading
     const inAuth = segments[0] === 'auth';
     const inPublic = segments[0] === '(public)';
-    if (!session && !inAuth && !inPublic) {
+    if (!session && !inPublic) {
       router.replace('/(public)/explore');
     } else if (session && (inAuth || inPublic)) {
       router.replace('/(tabs)');

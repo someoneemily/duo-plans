@@ -75,7 +75,7 @@ export default function Profile() {
     useCallback(() => {
       supabase.auth.getSession().then(({ data }) => {
         const uid = data.session?.user.id ?? null;
-        if (!uid) { router.replace('/auth'); return; }
+        if (!uid) { router.replace('/(public)/explore'); return; }
         setUserId(uid);
         load(uid);
       });
@@ -98,7 +98,7 @@ export default function Profile() {
 
   async function handleSignOut() {
     await signOut();
-    router.replace('/auth');
+    router.replace('/(public)/explore');
   }
 
   if (loading) {

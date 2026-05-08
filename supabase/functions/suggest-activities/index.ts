@@ -50,6 +50,7 @@ const FALLBACK_POOL = [
   { name: 'Visit a museum exhibit', category: 'Other' },
   { name: 'Attend a live podcast taping', category: 'Other' },
   { name: 'Go to a farmers market', category: 'Other' },
+  { name: "Be my +1 to my friend's bday", category: 'Other' },
 ]
 
 function pickFallbacks(existingNames: Set<string>) {

@@ -20,14 +20,16 @@ const FALLBACK_POOL = [
 
 function pickFallbacks(existingNames: Set<string>) {
   const available = FALLBACK_POOL.filter((s) => !existingNames.has(s.name.toLowerCase()))
-  // Shuffle and return up to 3
   return available.sort(() => Math.random() - 0.5).slice(0, 3)
 }
 
-async function callLLM(prompt: string): Promise<string> {
+async function callLLM(prompt: string): Promise<{ text: string; rawResponse: unknown; error?: string }> {
   const provider = Deno.env.get('LLM_PROVIDER') ?? 'openrouter'
-  const apiKey = Deno.env.get('LLM_API_KEY')!
-  const model = Deno.env.get('LLM_MODEL')!
+  const apiKey = Deno.env.get('LLM_API_KEY')
+  const model = Deno.env.get('LLM_MODEL')
+
+  if (!apiKey) return { text: '[]', rawResponse: null, error: 'LLM_API_KEY is not set' }
+  if (!model) return { text: '[]', rawResponse: null, error: 'LLM_MODEL is not set' }
 
   if (provider === 'anthropic') {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -44,7 +46,8 @@ async function callLLM(prompt: string): Promise<string> {
       }),
     })
     const json = await res.json()
-    return json.content?.[0]?.text ?? '[]'
+    const text = json.content?.[0]?.text ?? '[]'
+    return { text, rawResponse: json }
   }
 
   // Default: OpenRouter (OpenAI-compatible)
@@ -60,9 +63,11 @@ async function callLLM(prompt: string): Promise<string> {
     }),
   })
   const json = await res.json()
-  console.log('[suggest-activities] OpenRouter response:', JSON.stringify(json))
-  if (json.error?.code === 429) throw new Error('rate_limited')
-  return json.choices?.[0]?.message?.content ?? '[]'
+  if (json.error?.code === 429) {
+    return { text: '[]', rawResponse: json, error: `rate_limited: ${json.error.message ?? ''}` }
+  }
+  const text = json.choices?.[0]?.message?.content ?? '[]'
+  return { text, rawResponse: json }
 }
 
 Deno.serve(async (req) => {
@@ -82,7 +87,8 @@ Deno.serve(async (req) => {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return new Response('Unauthorized', { status: 401 })
 
-  console.log('[suggest-activities] provider:', Deno.env.get('LLM_PROVIDER'), 'model:', Deno.env.get('LLM_MODEL'), 'key set:', !!Deno.env.get('LLM_API_KEY'))
+  const provider = Deno.env.get('LLM_PROVIDER') ?? 'openrouter'
+  const model = Deno.env.get('LLM_MODEL') ?? '(not set)'
 
   const { data: activities } = await supabase
     .from('activities')
@@ -102,25 +108,44 @@ Reply with ONLY a JSON array: [{"name": "...", "category": "Restaurant"|"Experie
 No explanation, no markdown, just the JSON array.`
 
   const existingNames = new Set((activities ?? []).map((a: { name: string }) => a.name.toLowerCase()))
-
   const filterExisting = (list: { name: string; category: string }[]) =>
     list.filter((s) => !existingNames.has(s.name.toLowerCase()))
 
   let suggestions: { name: string; category: string }[]
+  let usedFallback = false
+  let llmResult: { text: string; rawResponse: unknown; error?: string } = { text: '[]', rawResponse: null }
+  let parseError: string | null = null
+
   try {
-    const raw = await callLLM(prompt)
-    console.log('[suggest-activities] prompt:', prompt)
-    console.log('[suggest-activities] raw LLM output:', raw)
-    const text = raw.replace(/```(?:json)?\n?/g, '').trim()
-    const parsed = JSON.parse(text)
+    llmResult = await callLLM(prompt)
+    console.log('[suggest-activities] provider:', provider, 'model:', model)
+    console.log('[suggest-activities] raw:', llmResult.text)
+    if (llmResult.error) throw new Error(llmResult.error)
+    const cleaned = llmResult.text.replace(/```(?:json)?\n?/g, '').trim()
+    const parsed = JSON.parse(cleaned)
     const filtered = filterExisting(Array.isArray(parsed) ? parsed : [])
-    suggestions = filtered.length > 0 ? filtered : pickFallbacks(existingNames)
-  } catch {
-    console.log('[suggest-activities] using fallback suggestions')
+    suggestions = filtered.length > 0 ? filtered : (() => { usedFallback = true; return pickFallbacks(existingNames) })()
+  } catch (err) {
+    parseError = String(err)
+    console.log('[suggest-activities] error, using fallback:', parseError)
+    usedFallback = true
     suggestions = pickFallbacks(existingNames)
   }
 
-  return new Response(JSON.stringify({ suggestions }), {
+  return new Response(JSON.stringify({
+    suggestions,
+    _debug: {
+      provider,
+      model,
+      existingActivities: existing || '(none)',
+      prompt,
+      rawResponse: llmResult.rawResponse,
+      parsedText: llmResult.text,
+      llmError: llmResult.error ?? null,
+      parseError,
+      usedFallback,
+    },
+  }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
 })

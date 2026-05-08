@@ -28,9 +28,29 @@ interface FeedItem {
   isOwn: boolean;
   notes: string | null;
   latestCreatedAt: string | null;
+  dates: string[] | null;
+  nextDate: string | null;
+  isPast: boolean;
+}
+
+interface DividerItem {
+  isDivider: true;
+  name: string;
+}
+
+type FeedRow = FeedItem | DividerItem;
+
+function getToday(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+function formatDate(dateStr: string): string {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function buildFeed(openActs: Activity[], myOpenActs: Activity[]): FeedItem[] {
+  const today = getToday();
   const myNames = new Set(myOpenActs.map((a) => a.name.toLowerCase()));
 
   const countByName: Record<string, { count: number; category: Category }> = {};
@@ -40,14 +60,12 @@ function buildFeed(openActs: Activity[], myOpenActs: Activity[]): FeedItem[] {
     countByName[key].count++;
   });
 
-  // Collect first available notes per activity name (own notes take priority)
   const notesByName: Record<string, string | null> = {};
   [...myOpenActs, ...openActs].forEach((a) => {
     const key = a.name.toLowerCase();
     if (a.notes && !notesByName[key]) notesByName[key] = a.notes;
   });
 
-  // Track most recent created_at per name
   const latestCreatedAt: Record<string, string> = {};
   [...openActs, ...myOpenActs].forEach((a) => {
     const key = a.name.toLowerCase();
@@ -56,20 +74,47 @@ function buildFeed(openActs: Activity[], myOpenActs: Activity[]): FeedItem[] {
     }
   });
 
+  // Track user's own dates per activity name
+  const datesByName: Record<string, string[]> = {};
+  myOpenActs.forEach((a) => {
+    if (a.dates && a.dates.length > 0) {
+      datesByName[a.name.toLowerCase()] = a.dates;
+    }
+  });
+
+  function makeFeedItem(name: string, category: Category, key: string): FeedItem {
+    const dates = datesByName[key] ?? null;
+    const nextDate = dates
+      ? (dates.filter((d) => d >= today).sort()[0] ?? null)
+      : null;
+    const isPast = dates !== null && dates.length > 0 && dates.every((d) => d < today);
+    return {
+      name,
+      category,
+      interestedCount: countByName[key]?.count ?? 0,
+      isOwn: myNames.has(key),
+      notes: notesByName[key] ?? null,
+      latestCreatedAt: latestCreatedAt[key] ?? null,
+      dates,
+      nextDate,
+      isPast,
+    };
+  }
+
   const items: FeedItem[] = [];
   const seen = new Set<string>();
 
   CATALOG.forEach((c) => {
     const key = c.name.toLowerCase();
     seen.add(key);
-    items.push({ name: c.name, category: c.category, interestedCount: countByName[key]?.count ?? 0, isOwn: myNames.has(key), notes: notesByName[key] ?? null, latestCreatedAt: latestCreatedAt[key] ?? null });
+    items.push(makeFeedItem(c.name, c.category, key));
   });
 
   openActs.forEach((a) => {
     const key = a.name.toLowerCase();
     if (!seen.has(key)) {
       seen.add(key);
-      items.push({ name: a.name, category: a.category, interestedCount: countByName[key].count, isOwn: false, notes: notesByName[key] ?? null, latestCreatedAt: latestCreatedAt[key] ?? null });
+      items.push(makeFeedItem(a.name, a.category, key));
     }
   });
 
@@ -77,16 +122,23 @@ function buildFeed(openActs: Activity[], myOpenActs: Activity[]): FeedItem[] {
     const key = a.name.toLowerCase();
     if (!seen.has(key)) {
       seen.add(key);
-      items.push({ name: a.name, category: a.category, interestedCount: countByName[key].count, isOwn: true, notes: notesByName[key] ?? null, latestCreatedAt: latestCreatedAt[key] ?? null });
+      items.push(makeFeedItem(a.name, a.category, key));
     }
   });
 
   return items.sort((a, b) => {
-    // Items with a real created_at (from DB) come first, sorted newest first
-    if (a.latestCreatedAt && b.latestCreatedAt) return b.latestCreatedAt.localeCompare(a.latestCreatedAt);
-    if (a.latestCreatedAt) return -1;
-    if (b.latestCreatedAt) return 1;
-    // Catalog-only items (no DB entry) sorted alphabetically at the bottom
+    // Past items always last
+    if (a.isPast !== b.isPast) return a.isPast ? 1 : -1;
+    // Primary: most recently added first
+    if (a.latestCreatedAt && b.latestCreatedAt) {
+      const cmp = b.latestCreatedAt.localeCompare(a.latestCreatedAt);
+      if (cmp !== 0) return cmp;
+    } else if (a.latestCreatedAt) return -1;
+    else if (b.latestCreatedAt) return 1;
+    // Secondary: soonest upcoming date first
+    if (a.nextDate && b.nextDate) return a.nextDate.localeCompare(b.nextDate);
+    if (a.nextDate) return -1;
+    if (b.nextDate) return 1;
     return a.name.localeCompare(b.name);
   });
 }
@@ -198,11 +250,19 @@ export default function Explore() {
     return matchesQuery && matchesCategory;
   });
 
+  // Split into active and past, insert divider sentinel
+  const active = filtered.filter((item) => !item.isPast);
+  const past = filtered.filter((item) => item.isPast);
+  const rows: FeedRow[] = [
+    ...active,
+    ...(past.length > 0 ? [{ isDivider: true as const, name: 'past' }, ...past] : []),
+  ];
+
   return (
     <SafeAreaView style={styles.container}>
       <FlatList
-        data={filtered}
-        keyExtractor={(item) => item.name.toLowerCase()}
+        data={rows}
+        keyExtractor={(item) => 'isDivider' in item ? 'divider-past' : item.name.toLowerCase()}
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ccc" />}
         ListHeaderComponent={
@@ -244,6 +304,16 @@ export default function Explore() {
           </View>
         }
         renderItem={({ item }) => {
+          if ('isDivider' in item) {
+            return (
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>past</Text>
+                <View style={styles.dividerLine} />
+              </View>
+            );
+          }
+
           const key = item.name.toLowerCase();
           const hearted = !!savedMap[key];
           const expanded = expandedName === key;
@@ -265,6 +335,7 @@ export default function Explore() {
                   <Text style={styles.rowMeta}>
                     {item.category.toLowerCase()}
                     {item.interestedCount > 0 ? ` · ${item.interestedCount} interested` : ''}
+                    {item.nextDate ? ` · ${formatDate(item.nextDate)}` : ''}
                   </Text>
                 </View>
                 {!item.isOwn && (
@@ -285,6 +356,15 @@ export default function Explore() {
                   {item.notes ? (
                     <LinkText style={styles.expandedNotes}>{item.notes}</LinkText>
                   ) : null}
+                  {item.dates && item.dates.length > 0 && (
+                    <View style={styles.expandedDates}>
+                      {item.dates.map((d) => (
+                        <View key={d} style={styles.expandedDateChip}>
+                          <Text style={styles.expandedDateText}>{formatDate(d)}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
                   {isLoading ? (
                     <ActivityIndicator color="#ccc" size="small" />
                   ) : interested.length === 0 ? (
@@ -345,6 +425,15 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 12, color: '#999' },
   chipTextActive: { color: '#fff' },
   sectionLabel: { fontSize: 12, color: '#999', paddingHorizontal: 20, marginBottom: 8 },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 12,
+  },
+  dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: '#e0e0e0' },
+  dividerText: { fontSize: 11, color: '#bbb', letterSpacing: 0.8 },
   row: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 20, paddingVertical: 16,
@@ -369,6 +458,12 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   expandedNotes: { fontSize: 13, color: '#666', lineHeight: 19 },
+  expandedDates: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  expandedDateChip: {
+    paddingHorizontal: 8, paddingVertical: 3,
+    borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 10,
+  },
+  expandedDateText: { fontSize: 11, color: '#888' },
   interestedLabel: { fontSize: 11, color: '#bbb', letterSpacing: 0.5, marginBottom: 2 },
   personRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   personName: { fontSize: 14, color: '#111' },

@@ -22,6 +22,7 @@ export interface Activity {
   source: 'self' | 'explore';
   completed_at: string | null;
   created_at: string;
+  dates: string[] | null;
   profiles?: Profile;
 }
 

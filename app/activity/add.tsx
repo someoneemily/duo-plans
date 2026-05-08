@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   SafeAreaView, ScrollView, KeyboardAvoidingView, Platform,
@@ -12,15 +13,32 @@ import type { Category } from '../../lib/types';
 
 const CATEGORIES: Category[] = ['Restaurant', 'Experience', 'Travel', 'Other'];
 
+const TODAY = new Date().toISOString().split('T')[0];
+
+function formatDate(dateStr: string): string {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 export default function AddActivity() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [category, setCategory] = useState<Category | ''>('');
   const [notes, setNotes] = useState('');
   const [isOpen, setIsOpen] = useState(true);
+  const [dates, setDates] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null);
+
+  function handleAddDate(dateStr: string) {
+    if (!dateStr) return;
+    setDates((prev) => prev.includes(dateStr) ? prev : [...prev, dateStr].sort());
+  }
+
+  function removeDate(dateStr: string) {
+    setDates((prev) => prev.filter((d) => d !== dateStr));
+  }
 
   function validate(): boolean {
     let ok = true;
@@ -44,6 +62,7 @@ export default function AddActivity() {
         category: category as Category,
         notes: notes.trim() || undefined,
         isOpen,
+        dates: dates.length > 0 ? dates : undefined,
       });
       router.back();
     } catch (err: any) {
@@ -96,6 +115,57 @@ export default function AddActivity() {
             onChangeText={setNotes}
             multiline
           />
+
+          <Text style={styles.label}>when? (optional)</Text>
+          {dates.length > 0 && (
+            <View style={styles.dateChips}>
+              {dates.map((d) => (
+                <View key={d} style={styles.dateChip}>
+                  <Text style={styles.dateChipText}>{formatDate(d)}</Text>
+                  <TouchableOpacity onPress={() => removeDate(d)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                    <Text style={styles.dateChipX}>×</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+          {Platform.OS === 'web'
+            ? React.createElement('input', {
+                type: 'date',
+                min: TODAY,
+                style: {
+                  border: 'none',
+                  borderBottom: '1px solid #e0e0e0',
+                  paddingTop: 12,
+                  paddingBottom: 12,
+                  fontSize: 16,
+                  color: '#999',
+                  background: 'transparent',
+                  outline: 'none',
+                  width: '100%',
+                  marginBottom: 12,
+                  cursor: 'pointer',
+                } as any,
+                onChange: (e: any) => {
+                  if (e.target.value) {
+                    handleAddDate(e.target.value);
+                    e.target.value = '';
+                  }
+                },
+              } as any)
+            : (
+              <TextInput
+                style={[styles.dateNativeInput, { outline: 'none' } as any]}
+                placeholder="YYYY-MM-DD  (tap to add)"
+                placeholderTextColor="#ccc"
+                returnKeyType="done"
+                onSubmitEditing={(e) => {
+                  const v = e.nativeEvent.text.trim();
+                  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) { handleAddDate(v); }
+                }}
+              />
+            )
+          }
 
           <TouchableOpacity style={styles.openRow} onPress={() => setIsOpen(!isOpen)}>
             <View>
@@ -177,8 +247,29 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#ececec',
     paddingVertical: 10,
-    marginBottom: 28,
+    marginBottom: 4,
     minHeight: 72,
+  },
+  dateChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
+  dateChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: '#c9a0dc',
+    borderRadius: 14,
+  },
+  dateChipText: { fontSize: 12, color: '#c9a0dc' },
+  dateChipX: { fontSize: 14, color: '#c9a0dc', lineHeight: 16 },
+  dateNativeInput: {
+    fontSize: 16,
+    color: '#111',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e0e0e0',
+    paddingVertical: 12,
+    marginBottom: 12,
   },
   openRow: {
     flexDirection: 'row',
@@ -188,6 +279,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: '#ececec',
+    marginTop: 8,
     marginBottom: 32,
   },
   openLabel: { fontSize: 14, color: '#111', marginBottom: 3 },

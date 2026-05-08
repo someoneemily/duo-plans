@@ -12,6 +12,19 @@ import { validateActivityName } from '../../lib/validate';
 import CompletionCelebration from '../../components/CompletionCelebration';
 import type { Activity, Category } from '../../lib/types';
 
+function formatPlanDates(dates: string[]): string {
+  const today = new Date().toISOString().split('T')[0];
+  const upcoming = dates.filter((d) => d >= today).sort();
+  const targets = upcoming.length > 0 ? upcoming : dates.sort();
+  return targets
+    .slice(0, 2)
+    .map((d) => {
+      const [year, month, day] = d.split('-').map(Number);
+      return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    })
+    .join(', ') + (targets.length > 2 ? ' …' : '');
+}
+
 function PlanRow({
   item,
   onToggleOpen,
@@ -80,7 +93,10 @@ function PlanRow({
             <Text style={[styles.planName, isDone && styles.planNameDone]}>{item.name}</Text>
           </TouchableOpacity>
         )}
-        <Text style={styles.planMeta}>{item.category.toLowerCase()}</Text>
+        <Text style={styles.planMeta}>
+          {item.category.toLowerCase()}
+          {item.dates && item.dates.length > 0 ? ` · ${formatPlanDates(item.dates)}` : ''}
+        </Text>
       </View>
 
       {/* Right actions — hidden when done */}

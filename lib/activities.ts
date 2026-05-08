@@ -53,6 +53,7 @@ export async function addActivity(params: {
   notes?: string;
   isOpen: boolean;
   source?: 'self' | 'explore';
+  dates?: string[];
 }): Promise<Activity> {
   const { data, error } = await supabase
     .from('activities')
@@ -64,6 +65,7 @@ export async function addActivity(params: {
       is_open: params.isOpen,
       is_private: !params.isOpen,
       source: params.source ?? 'self',
+      dates: params.dates && params.dates.length > 0 ? params.dates : null,
     })
     .select()
     .single();

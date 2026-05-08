@@ -39,6 +39,7 @@ create table if not exists public.activities (
   notes text,
   is_open boolean default true not null,
   google_place_id text,
+  dates text[] default null,
   created_at timestamptz default now()
 );
 

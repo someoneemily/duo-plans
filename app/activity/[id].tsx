@@ -95,14 +95,16 @@ export default function ActivityDetail() {
       ? `${(window as any).location.origin}/activity/${id}`
       : `https://duo-plans.vercel.app/activity/${id}`;
 
-    if (Platform.OS === 'web') {
+    if (Platform.OS !== 'web') {
+      await Share.share({ url, message: url });
+    } else if (typeof (navigator as any).share === 'function') {
+      try { await (navigator as any).share({ title: activity?.name ?? 'duo plans', url }); } catch { /* cancelled */ }
+    } else {
       try {
         await (navigator as any).clipboard.writeText(url);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       } catch { /* silent */ }
-    } else {
-      await Share.share({ url, message: url });
     }
   }
 

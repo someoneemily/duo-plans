@@ -48,13 +48,15 @@ function PlanRow({
     const url = Platform.OS === 'web'
       ? `${(window as any).location.origin}/activity/${item.id}`
       : `https://duo-plans.vercel.app/activity/${item.id}`;
-    if (Platform.OS === 'web') {
-      try { await (navigator as any).clipboard.writeText(url); } catch { /* silent */ }
-    } else {
+    if (Platform.OS !== 'web') {
       await Share.share({ url, message: url });
+    } else if (typeof (navigator as any).share === 'function') {
+      try { await (navigator as any).share({ title: item.name, url }); } catch { /* cancelled */ }
+    } else {
+      try { await (navigator as any).clipboard.writeText(url); } catch { /* silent */ }
+      setShared(true);
+      setTimeout(() => setShared(false), 1500);
     }
-    setShared(true);
-    setTimeout(() => setShared(false), 1500);
   }
   const inputRef = useRef<TextInput>(null);
 

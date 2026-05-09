@@ -51,7 +51,7 @@ function formatDate(dateStr: string): string {
 
 function buildFeed(openActs: Activity[], myOpenActs: Activity[]): FeedItem[] {
   const today = getToday();
-  const myNames = new Set(myOpenActs.map((a) => a.name.toLowerCase()));
+  const myNames = new Set(myOpenActs.filter((a) => a.source === 'self').map((a) => a.name.toLowerCase()));
 
   const countByName: Record<string, { count: number; category: Category }> = {};
   [...openActs, ...myOpenActs].forEach((a) => {

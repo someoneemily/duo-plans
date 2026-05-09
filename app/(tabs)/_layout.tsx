@@ -1,5 +1,5 @@
 import { Tabs, useRouter } from 'expo-router';
-import { StyleSheet, AppState, Pressable } from 'react-native';
+import { StyleSheet, AppState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
@@ -60,12 +60,16 @@ export default function TabsLayout() {
           const name = focused ? icons?.active : icons?.inactive;
           return name ? <Ionicons name={name} size={22} color={color} /> : null;
         },
-        tabBarButton: (props) => (
-          <Pressable
-            {...props}
-            onPress={() => router.replace(TAB_HREFS[route.name] ?? '/(tabs)/')}
-          />
-        ),
+      })}
+      screenListeners={({ navigation, route }) => ({
+        tabPress: (e) => {
+          const state = navigation.getState();
+          const isFocused = state.routes[state.index].name === route.name;
+          if (!isFocused) {
+            e.preventDefault();
+            router.replace(TAB_HREFS[route.name] ?? '/(tabs)/');
+          }
+        },
       })}
     >
       <Tabs.Screen name="index"   options={{ title: 'home' }} />

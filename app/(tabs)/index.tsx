@@ -127,12 +127,14 @@ function PlanRow({
               </Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity
-            onPress={handleShare}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="share-outline" size={16} color={shared ? '#c9a0dc' : '#ccc'} />
-          </TouchableOpacity>
+          {item.source !== 'explore' && (
+            <TouchableOpacity
+              onPress={handleShare}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="share-outline" size={16} color={shared ? '#c9a0dc' : '#ccc'} />
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </View>

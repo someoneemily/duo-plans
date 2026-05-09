@@ -2,7 +2,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
   ScrollView, ActivityIndicator, Alert, Platform, Share,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import LinkText from '../../components/LinkText';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
@@ -42,6 +42,14 @@ export default function ActivityDetail() {
       setLoading(false);
     })();
   }, [id]);
+
+  function handleBack() {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace(userId ? '/(tabs)' : '/');
+    }
+  }
 
   async function handleToggle() {
     if (!activity) return;
@@ -141,6 +149,11 @@ export default function ActivityDetail() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <Stack.Screen options={{ headerLeft: () => (
+        <TouchableOpacity onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Text style={styles.backBtn}>‹ Back</Text>
+        </TouchableOpacity>
+      )}} />
       <ScrollView contentContainerStyle={styles.scroll}>
 
         <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
@@ -240,6 +253,7 @@ export default function ActivityDetail() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+  backBtn: { fontSize: 17, color: '#007AFF', paddingLeft: 4 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   notFound: { fontSize: 15, color: '#999' },
   scroll: { paddingBottom: 60 },

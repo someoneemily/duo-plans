@@ -22,7 +22,7 @@ export default function RootLayout() {
     const inAuth = segments[0] === 'auth';
     const inPublic = segments[0] === '(public)';
     const inActivity = segments[0] === 'activity';
-    const inRoot = segments.length === 0;
+    const inRoot = segments.length === 0 || segments[0] === 'index';
     if (!session && !inPublic && !inActivity && !inRoot) {
       router.replace('/');
     } else if (session && (inAuth || inPublic || inRoot)) {

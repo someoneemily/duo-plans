@@ -4,6 +4,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { consumePendingDeepLink } from '../lib/pendingDeepLink';
 
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -17,13 +18,16 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    if (session === undefined) return; // still loading
+    if (session === undefined) return;
     const inAuth = segments[0] === 'auth';
     const inPublic = segments[0] === '(public)';
-    if (!session && !inPublic) {
+    const inActivity = segments[0] === 'activity';
+    if (!session && !inPublic && !inActivity) {
       router.replace('/(public)/explore');
     } else if (session && (inAuth || inPublic)) {
-      router.replace('/(tabs)');
+      consumePendingDeepLink().then((href) => {
+        router.replace((href as any) ?? '/(tabs)');
+      });
     }
   }, [session, segments]);
 

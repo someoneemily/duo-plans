@@ -1,37 +1,46 @@
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  ScrollView, ActivityIndicator, Alert,
+  ScrollView, ActivityIndicator, Alert, Platform, Share,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import LinkText from '../../components/LinkText';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { getActivity, toggleOpen, deleteActivity, markAsCompleted, getMatchesForActivity } from '../../lib/activities';
+import {
+  getActivity, toggleOpen, deleteActivity, markAsCompleted,
+  getInterestedUsers, addActivity,
+} from '../../lib/activities';
+import { setPendingDeepLink } from '../../lib/pendingDeepLink';
 import CompletionCelebration from '../../components/CompletionCelebration';
 import type { Activity } from '../../lib/types';
+
+type InterestedPerson = { id: string; display_name: string | null; avatar_url?: string | null };
 
 export default function ActivityDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [activity, setActivity] = useState<Activity | null>(null);
-  const [matches, setMatches] = useState<Activity[]>([]);
+  const [interested, setInterested] = useState<InterestedPerson[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [celebrating, setCelebrating] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }) => {
+    (async () => {
+      const { data } = await supabase.auth.getSession();
       const uid = data.session?.user.id ?? null;
       setUserId(uid);
-      if (!id) return;
-      const [act, matchList] = await Promise.all([
-        getActivity(id),
-        uid ? getMatchesForActivity(id, uid) : [],
-      ]);
+      if (!id) { setLoading(false); return; }
+      const act = await getActivity(id);
       setActivity(act);
-      setMatches(matchList);
+      if (act) {
+        const people = await getInterestedUsers(act.name);
+        setInterested(people);
+      }
       setLoading(false);
-    });
+    })();
   }, [id]);
 
   async function handleToggle() {
@@ -40,12 +49,8 @@ export default function ActivityDetail() {
     setActivity({ ...activity, is_open: newValue });
     try {
       await toggleOpen(activity.id, newValue);
-      if (newValue && userId) {
-        const updated = await getMatchesForActivity(activity.id, userId);
-        setMatches(updated);
-      }
     } catch {
-      setActivity({ ...activity, is_open: !newValue }); // revert
+      setActivity({ ...activity, is_open: !newValue });
     }
   }
 
@@ -61,42 +66,114 @@ export default function ActivityDetail() {
     Alert.alert('Remove plan', 'Remove this from your plans?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteActivity(activity.id);
-          router.back();
-        },
+        text: 'Remove', style: 'destructive',
+        onPress: async () => { await deleteActivity(activity.id); router.back(); },
       },
     ]);
   }
 
-  if (loading || !activity) {
+  async function handleAddToPlans() {
+    if (!activity || !userId) return;
+    setAdding(true);
+    try {
+      await addActivity({
+        userId,
+        name: activity.name,
+        category: activity.category as any,
+        notes: activity.notes ?? undefined,
+        isOpen: true,
+        source: 'explore',
+      });
+      setTimeout(() => router.replace('/(tabs)'), 300);
+    } catch {
+      setAdding(false);
+    }
+  }
+
+  async function handleShare() {
+    const url = Platform.OS === 'web'
+      ? `${(window as any).location.origin}/activity/${id}`
+      : `https://duo-plans.vercel.app/activity/${id}`;
+
+    if (Platform.OS === 'web') {
+      try {
+        await (navigator as any).clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch { /* silent */ }
+    } else {
+      await Share.share({ url, message: url });
+    }
+  }
+
+  async function handleSignIn() {
+    if (id) await setPendingDeepLink(`/activity/${id}`);
+    router.push('/(public)/signin' as any);
+  }
+
+  async function handleSignUp() {
+    if (id) await setPendingDeepLink(`/activity/${id}`);
+    router.push('/(public)/signup' as any);
+  }
+
+  if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.center}><ActivityIndicator color="#6C47FF" /></View>
+        <View style={styles.center}><ActivityIndicator color="#c9a0dc" /></View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!activity) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.center}>
+          <Text style={styles.notFound}>Activity not found.</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
   const isOwner = userId === activity.user_id;
+  const isLoggedIn = !!userId;
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
+
+        <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+          <Text style={styles.shareText}>{copied ? 'copied ✓' : 'copy link'}</Text>
+        </TouchableOpacity>
+
         <View style={styles.hero}>
-          <Text style={styles.category}>{activity.category}</Text>
+          <Text style={styles.category}>{activity.category?.toLowerCase()}</Text>
           <Text style={styles.name}>{activity.name}</Text>
           {activity.notes ? <LinkText style={styles.notes}>{activity.notes}</LinkText> : null}
         </View>
 
+        {interested.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>
+              {interested.length} {interested.length === 1 ? 'person' : 'people'} interested
+            </Text>
+            {interested.map((person) => (
+              <View key={person.id} style={styles.personRow}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{person.display_name?.[0]?.toUpperCase() ?? '?'}</Text>
+                </View>
+                <Text style={styles.personName}>{person.display_name}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         {isOwner && (
-          <View style={styles.openSection}>
+          <View style={styles.section}>
             <View style={styles.openRow}>
-              <View>
-                <Text style={styles.openLabel}>Open to doing with someone</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.openLabel}>open to doing with someone</Text>
                 <Text style={styles.openSub}>
-                  {activity.is_open ? "Others can see you're interested" : 'Only you can see this plan'}
+                  {activity.is_open ? "others can see you're interested" : 'only you can see this plan'}
                 </Text>
               </View>
               <TouchableOpacity
@@ -109,45 +186,45 @@ export default function ActivityDetail() {
           </View>
         )}
 
-        {activity.is_open && matches.length > 0 && (
-          <View style={styles.matchesSection}>
-            <Text style={styles.sectionTitle}>
-              {matches.length} {matches.length === 1 ? 'person' : 'people'} also want this
-            </Text>
-            {matches.map((match) => {
-              const profile = (match as any).profiles;
-              const name = profile?.display_name ?? 'Someone';
-              return (
-                <View key={match.id} style={styles.matchCard}>
-                  <View style={styles.matchAvatar}>
-                    <Text style={styles.matchAvatarText}>{name[0]?.toUpperCase()}</Text>
-                  </View>
-                  <View style={styles.matchInfo}>
-                    <Text style={styles.matchName}>{name}</Text>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        )}
-
         {isOwner && !activity.completed_at && (
-          <TouchableOpacity style={styles.completeButton} onPress={handleComplete}>
-            <Text style={styles.completeText}>Mark as done ✓</Text>
+          <TouchableOpacity style={styles.actionButton} onPress={handleComplete}>
+            <Text style={styles.actionButtonText}>MARK AS DONE</Text>
           </TouchableOpacity>
         )}
 
         {activity.completed_at && (
           <View style={styles.completedBanner}>
-            <Text style={styles.completedBannerText}>✓ Completed</Text>
+            <Text style={styles.completedText}>completed</Text>
           </View>
         )}
 
         {isOwner && (
           <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-            <Text style={styles.deleteText}>Remove from my plans</Text>
+            <Text style={styles.deleteText}>remove from my plans</Text>
           </TouchableOpacity>
         )}
+
+        {isLoggedIn && !isOwner && (
+          <TouchableOpacity style={styles.actionButton} onPress={handleAddToPlans} disabled={adding}>
+            {adding
+              ? <ActivityIndicator color="#111" />
+              : <Text style={styles.actionButtonText}>ADD TO MY PLANS</Text>
+            }
+          </TouchableOpacity>
+        )}
+
+        {!isLoggedIn && (
+          <View style={styles.ctaSection}>
+            <Text style={styles.ctaLabel}>want to do this?</Text>
+            <TouchableOpacity style={styles.ctaButton} onPress={handleSignUp}>
+              <Text style={styles.ctaButtonText}>CREATE ACCOUNT</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.ctaSecondary} onPress={handleSignIn}>
+              <Text style={styles.ctaSecondaryText}>sign in →</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
       </ScrollView>
 
       <CompletionCelebration
@@ -160,65 +237,102 @@ export default function ActivityDetail() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fafafa' },
+  container: { flex: 1, backgroundColor: '#fff' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  scroll: { paddingBottom: 40 },
-  hero: { backgroundColor: '#fff', padding: 24, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  category: { fontSize: 13, color: '#6C47FF', fontWeight: '600', marginBottom: 6 },
-  name: { fontSize: 26, fontWeight: '700', color: '#111' },
-  notes: { fontSize: 14, color: '#666', marginTop: 8, lineHeight: 20 },
-  openSection: {
-    backgroundColor: '#fff',
-    margin: 20,
-    borderRadius: 14,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+  notFound: { fontSize: 15, color: '#999' },
+  scroll: { paddingBottom: 60 },
+  shareButton: {
+    alignSelf: 'flex-end',
+    marginTop: 8,
+    marginRight: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#ddd',
   },
-  openRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  openLabel: { fontSize: 15, fontWeight: '600', color: '#111' },
-  openSub: { fontSize: 13, color: '#888', marginTop: 4 },
-  toggle: {
-    width: 50, height: 28, borderRadius: 14, backgroundColor: '#e0e0e0',
-    justifyContent: 'center', paddingHorizontal: 2,
+  shareText: { fontSize: 12, color: '#999', letterSpacing: 0.5 },
+  hero: {
+    padding: 24,
+    paddingTop: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#ececec',
   },
-  toggleOn: { backgroundColor: '#6C47FF' },
-  toggleThumb: {
-    width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 2,
+  category: {
+    fontSize: 11,
+    color: '#c9a0dc',
+    fontWeight: '600',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 8,
   },
-  toggleThumbOn: { alignSelf: 'flex-end' },
-  matchesSection: { paddingHorizontal: 20 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111', marginBottom: 12 },
-  matchCard: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 14,
-    flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+  name: {
+    fontFamily: 'Georgia',
+    fontSize: 28,
+    color: '#111',
+    fontWeight: '400',
+    lineHeight: 34,
   },
-  matchAvatar: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: '#EDE9FF',
+  notes: { fontSize: 14, color: '#888', marginTop: 10, lineHeight: 21 },
+  section: {
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#ececec',
+  },
+  sectionLabel: {
+    fontSize: 11,
+    color: '#bbb',
+    fontWeight: '500',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 16,
+  },
+  personRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  avatar: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: '#f5eeff',
     justifyContent: 'center', alignItems: 'center',
   },
-  matchAvatarText: { fontSize: 18, color: '#6C47FF', fontWeight: '700' },
-  matchInfo: { flex: 1 },
-  matchName: { fontSize: 15, fontWeight: '600', color: '#111' },
-  completeButton: {
-    marginHorizontal: 20, marginTop: 24, padding: 16, borderRadius: 24,
-    borderWidth: 1, borderColor: '#111', alignItems: 'center',
-    backgroundColor: '#fff',
+  avatarText: { fontSize: 13, color: '#c9a0dc', fontWeight: '600' },
+  personName: { fontSize: 15, color: '#111' },
+  openRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  openLabel: { fontSize: 14, color: '#111', fontWeight: '500' },
+  openSub: { fontSize: 12, color: '#bbb', marginTop: 3 },
+  toggle: {
+    width: 46, height: 26, borderRadius: 13, backgroundColor: '#e0e0e0',
+    justifyContent: 'center', paddingHorizontal: 2,
   },
-  completeText: { color: '#111', fontWeight: '500', fontSize: 12, letterSpacing: 1.2 },
+  toggleOn: { backgroundColor: '#c9a0dc' },
+  toggleThumb: {
+    width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15, shadowRadius: 2, elevation: 2,
+  },
+  toggleThumbOn: { alignSelf: 'flex-end' },
+  actionButton: {
+    marginHorizontal: 24, marginTop: 28, paddingVertical: 15,
+    borderRadius: 24, borderWidth: 1, borderColor: '#111', alignItems: 'center',
+  },
+  actionButtonText: { fontSize: 11, color: '#111', letterSpacing: 1.5, fontWeight: '500' },
   completedBanner: {
-    marginHorizontal: 20, marginTop: 24, padding: 16, borderRadius: 14,
-    backgroundColor: '#EDE9FF', alignItems: 'center',
+    marginHorizontal: 24, marginTop: 28, paddingVertical: 14,
+    borderRadius: 12, backgroundColor: '#f5eeff', alignItems: 'center',
   },
-  completedBannerText: { color: '#6C47FF', fontWeight: '700', fontSize: 15 },
+  completedText: { color: '#c9a0dc', fontSize: 12, fontWeight: '600', letterSpacing: 1 },
   deleteButton: {
-    marginHorizontal: 20, marginTop: 12, padding: 16, borderRadius: 24,
-    backgroundColor: '#fff', alignItems: 'center', borderWidth: 1, borderColor: '#f0e0e0',
+    marginHorizontal: 24, marginTop: 8, paddingVertical: 14, alignItems: 'center',
   },
-  deleteText: { color: '#FF4444', fontWeight: '600', fontSize: 15 },
+  deleteText: { color: '#ddd', fontSize: 13 },
+  ctaSection: {
+    marginTop: 48, paddingHorizontal: 24, alignItems: 'center',
+  },
+  ctaLabel: { fontSize: 13, color: '#bbb', fontStyle: 'italic', marginBottom: 24 },
+  ctaButton: {
+    borderWidth: 1, borderColor: '#111', paddingVertical: 14,
+    borderRadius: 24, alignItems: 'center', width: '100%',
+  },
+  ctaButtonText: { fontSize: 11, color: '#111', letterSpacing: 1.5, fontWeight: '500' },
+  ctaSecondary: { marginTop: 16, paddingVertical: 8 },
+  ctaSecondaryText: { fontSize: 14, color: '#bbb' },
 });

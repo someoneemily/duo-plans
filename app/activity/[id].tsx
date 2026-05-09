@@ -47,7 +47,7 @@ export default function ActivityDetail() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace(userId ? '/(tabs)' : '/');
+      router.replace('/(tabs)');
     }
   }
 

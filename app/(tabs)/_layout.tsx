@@ -1,5 +1,5 @@
-import { Tabs } from 'expo-router';
-import { StyleSheet, AppState } from 'react-native';
+import { Tabs, useRouter } from 'expo-router';
+import { StyleSheet, AppState, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
@@ -14,7 +14,15 @@ const TAB_ICONS: Record<string, { active: IoniconsName; inactive: IoniconsName }
   profile: { active: 'person-circle',    inactive: 'person-circle-outline' },
 };
 
+const TAB_HREFS: Record<string, string> = {
+  index:   '/(tabs)/',
+  explore: '/(tabs)/explore',
+  matches: '/(tabs)/matches',
+  profile: '/(tabs)/profile',
+};
+
 export default function TabsLayout() {
+  const router = useRouter();
   const [badgeCount, setBadgeCount] = useState(0);
   const userIdRef = useRef<string | null>(null);
 
@@ -47,11 +55,17 @@ export default function TabsLayout() {
         tabBarActiveTintColor: '#111',
         tabBarInactiveTintColor: '#bbb',
         tabBarLabelStyle: styles.tabLabel,
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, color }) => {
           const icons = TAB_ICONS[route.name];
           const name = focused ? icons?.active : icons?.inactive;
           return name ? <Ionicons name={name} size={22} color={color} /> : null;
         },
+        tabBarButton: (props) => (
+          <Pressable
+            {...props}
+            onPress={() => router.replace(TAB_HREFS[route.name] ?? '/(tabs)/')}
+          />
+        ),
       })}
     >
       <Tabs.Screen name="index"   options={{ title: 'home' }} />

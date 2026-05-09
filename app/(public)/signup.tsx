@@ -21,10 +21,9 @@ export default function SignUp() {
     try {
       const { error } = await signUpWithEmail(email, password, displayName);
       if (error) throw error;
-      router.replace('/(tabs)');
+      // Root _layout handles redirect once session updates — don't navigate here.
     } catch (err: any) {
       setAuthError(err.message ?? 'Something went wrong. Try again.');
-    } finally {
       setLoading(false);
     }
   }

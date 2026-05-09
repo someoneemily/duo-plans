@@ -15,7 +15,7 @@ const TAB_ICONS: Record<string, { active: IoniconsName; inactive: IoniconsName }
 };
 
 const TAB_HREFS: Record<string, string> = {
-  index:   '/(tabs)/',
+  index:   '/(tabs)',
   explore: '/(tabs)/explore',
   matches: '/(tabs)/matches',
   profile: '/(tabs)/profile',

@@ -20,10 +20,9 @@ export default function SignIn() {
     try {
       const { error } = await signInWithEmail(email, password);
       if (error) throw error;
-      router.replace('/(tabs)');
+      // Root _layout handles redirect once session updates — don't navigate here.
     } catch (err: any) {
       setAuthError(err.message ?? 'Something went wrong. Try again.');
-    } finally {
       setLoading(false);
     }
   }

@@ -22,9 +22,10 @@ export default function RootLayout() {
     const inAuth = segments[0] === 'auth';
     const inPublic = segments[0] === '(public)';
     const inActivity = segments[0] === 'activity';
-    if (!session && !inPublic && !inActivity) {
-      router.replace('/(public)/explore');
-    } else if (session && (inAuth || inPublic)) {
+    const inRoot = segments.length === 0;
+    if (!session && !inPublic && !inActivity && !inRoot) {
+      router.replace('/');
+    } else if (session && (inAuth || inPublic || inRoot)) {
       consumePendingDeepLink().then((href) => {
         router.replace((href as any) ?? '/(tabs)');
       });
@@ -37,6 +38,7 @@ export default function RootLayout() {
     <>
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
         <Stack.Screen name="auth" />
         <Stack.Screen name="(public)" />
         <Stack.Screen name="(tabs)" />

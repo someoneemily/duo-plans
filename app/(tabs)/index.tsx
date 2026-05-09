@@ -1,6 +1,7 @@
 import {
   View, Text, TouchableOpacity, StyleSheet,
   SafeAreaView, ActivityIndicator, ScrollView, TextInput, RefreshControl,
+  Platform, Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -41,6 +42,20 @@ function PlanRow({
   const isDone = !!item.completed_at;
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState(item.name);
+  const [shared, setShared] = useState(false);
+
+  async function handleShare() {
+    const url = Platform.OS === 'web'
+      ? `${(window as any).location.origin}/activity/${item.id}`
+      : `https://duo-plans.vercel.app/activity/${item.id}`;
+    if (Platform.OS === 'web') {
+      try { await (navigator as any).clipboard.writeText(url); } catch { /* silent */ }
+    } else {
+      await Share.share({ url, message: url });
+    }
+    setShared(true);
+    setTimeout(() => setShared(false), 1500);
+  }
   const inputRef = useRef<TextInput>(null);
 
   function handleNamePress() {
@@ -113,10 +128,10 @@ function PlanRow({
             </TouchableOpacity>
           )}
           <TouchableOpacity
-            onPress={onDelete}
+            onPress={handleShare}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="trash-outline" size={16} color="#ccc" />
+            <Ionicons name="share-outline" size={16} color={shared ? '#c9a0dc' : '#ccc'} />
           </TouchableOpacity>
         </View>
       )}
@@ -158,7 +173,7 @@ export default function MyPlans() {
         const uid = data.session?.user.id ?? null;
         setUserId(uid);
         if (uid) load(uid);
-        else router.replace('/(public)/explore');
+        else router.replace('/');
       });
     }, [])
   );

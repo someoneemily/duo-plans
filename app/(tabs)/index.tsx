@@ -8,10 +8,11 @@ import { useRouter } from 'expo-router';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { getMyActivities, addActivity, toggleOpen, deleteActivity, markAsCompleted, updateActivity } from '../../lib/activities';
+import { getMyActivities, addActivity, toggleOpen, deleteActivity, markAsCompleted, updateActivity, getInterestedUsers } from '../../lib/activities';
 import { validateActivityName } from '../../lib/validate';
 import CompletionCelebration from '../../components/CompletionCelebration';
-import type { Activity, Category } from '../../lib/types';
+import LinkText from '../../components/LinkText';
+import type { Activity, Category, Profile } from '../../lib/types';
 
 function formatPlanDates(dates: string[]): string {
   const today = new Date().toISOString().split('T')[0];
@@ -40,28 +41,31 @@ function PlanRow({
   onUpdate: (name: string) => void;
 }) {
   const isDone = !!item.completed_at;
+  const canEdit = item.source === 'self' && !isDone;
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState(item.name);
   const [shared, setShared] = useState(false);
-
-  async function handleShare() {
-    const url = Platform.OS === 'web'
-      ? `${(window as any).location.origin}/activity/${item.id}`
-      : `https://duo-plans.vercel.app/activity/${item.id}`;
-    if (Platform.OS !== 'web') {
-      await Share.share({ url, message: url });
-    } else if (typeof (navigator as any).share === 'function') {
-      try { await (navigator as any).share({ title: item.name, url }); } catch { /* cancelled */ }
-    } else {
-      try { await (navigator as any).clipboard.writeText(url); } catch { /* silent */ }
-      setShared(true);
-      setTimeout(() => setShared(false), 1500);
-    }
-  }
+  const [expanded, setExpanded] = useState(false);
+  const [interested, setInterested] = useState<Profile[]>([]);
+  const [loadingInterested, setLoadingInterested] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
+  async function toggleExpand() {
+    const next = !expanded;
+    setExpanded(next);
+    if (next && item.is_open && !isDone && interested.length === 0) {
+      setLoadingInterested(true);
+      try {
+        const users = await getInterestedUsers(item.name);
+        setInterested(users);
+      } finally {
+        setLoadingInterested(false);
+      }
+    }
+  }
+
   function handleNamePress() {
-    if (isDone) return;
+    if (!canEdit) return;
     setDraftName(item.name);
     setEditingName(true);
     setTimeout(() => inputRef.current?.focus(), 50);
@@ -77,66 +81,102 @@ function PlanRow({
     }
   }
 
+  async function handleShare() {
+    const url = Platform.OS === 'web'
+      ? `${(window as any).location.origin}/activity/${item.id}`
+      : `https://duo-plans.vercel.app/activity/${item.id}`;
+    if (Platform.OS !== 'web') {
+      await Share.share({ url, message: url });
+    } else if (typeof (navigator as any).share === 'function') {
+      try { await (navigator as any).share({ title: item.name, url }); } catch { /* cancelled */ }
+    } else {
+      try { await (navigator as any).clipboard.writeText(url); } catch { /* silent */ }
+      setShared(true);
+      setTimeout(() => setShared(false), 1500);
+    }
+  }
+
   return (
-    <View style={[styles.row, isDone && styles.rowDone]}>
-      {/* Circle checkbox */}
-      <TouchableOpacity
-        onPress={isDone ? undefined : onComplete}
-        style={styles.circle}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        activeOpacity={0.5}
-      >
-        {isDone
-          ? <Text style={styles.circleDone}>✓</Text>
-          : <View style={styles.circleEmpty} />
-        }
+    <View>
+      <TouchableOpacity style={[styles.row, isDone && styles.rowDone]} onPress={toggleExpand} activeOpacity={0.7}>
+        <TouchableOpacity
+          onPress={isDone ? undefined : onComplete}
+          style={styles.circle}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          activeOpacity={0.5}
+        >
+          {isDone
+            ? <Text style={styles.circleDone}>✓</Text>
+            : <View style={styles.circleEmpty} />
+          }
+        </TouchableOpacity>
+
+        <View style={styles.rowCenter}>
+          {editingName ? (
+            <TextInput
+              ref={inputRef}
+              style={[styles.planName, styles.nameInput, { outline: 'none', fontSize: 16 } as any]}
+              value={draftName}
+              onChangeText={setDraftName}
+              onBlur={handleNameBlur}
+              onSubmitEditing={handleNameBlur}
+              returnKeyType="done"
+              selectTextOnFocus
+            />
+          ) : (
+            <TouchableOpacity onPress={handleNamePress} activeOpacity={canEdit ? 0.6 : 1} disabled={!canEdit}>
+              <Text style={[styles.planName, isDone && styles.planNameDone]}>{item.name}</Text>
+            </TouchableOpacity>
+          )}
+          <Text style={styles.planMeta}>
+            {item.category.toLowerCase()}
+            {item.dates && item.dates.length > 0 ? ` · ${formatPlanDates(item.dates)}` : ''}
+          </Text>
+        </View>
+
+        {!isDone && (
+          <View style={styles.right}>
+            {item.source !== 'explore' && (
+              <TouchableOpacity
+                onPress={onToggleOpen}
+                style={[styles.duoChip, item.is_open && styles.duoChipOn]}
+              >
+                <Text style={[styles.duoChipText, item.is_open && styles.duoChipTextOn]}>
+                  {item.is_open ? 'open' : 'solo'}
+                </Text>
+              </TouchableOpacity>
+            )}
+            {item.source !== 'explore' && (
+              <TouchableOpacity onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="share-outline" size={16} color={shared ? '#c9a0dc' : '#ccc'} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </TouchableOpacity>
 
-      {/* Name + category */}
-      <View style={styles.rowCenter}>
-        {editingName ? (
-          <TextInput
-            ref={inputRef}
-            style={[styles.planName, styles.nameInput, { outline: 'none', fontSize: 16 } as any]}
-            value={draftName}
-            onChangeText={setDraftName}
-            onBlur={handleNameBlur}
-            onSubmitEditing={handleNameBlur}
-            returnKeyType="done"
-            selectTextOnFocus
-          />
-        ) : (
-          <TouchableOpacity onPress={handleNamePress} activeOpacity={0.6}>
-            <Text style={[styles.planName, isDone && styles.planNameDone]}>{item.name}</Text>
-          </TouchableOpacity>
-        )}
-        <Text style={styles.planMeta}>
-          {item.category.toLowerCase()}
-          {item.dates && item.dates.length > 0 ? ` · ${formatPlanDates(item.dates)}` : ''}
-        </Text>
-      </View>
+      {expanded && (
+        <View style={styles.expandedSection}>
+          {item.notes ? <LinkText style={styles.expandedNotes}>{item.notes}</LinkText> : null}
 
-      {/* Right actions — hidden when done */}
-      {!isDone && (
-        <View style={styles.right}>
-          {item.source !== 'explore' && (
-            <TouchableOpacity
-              onPress={onToggleOpen}
-              style={[styles.duoChip, item.is_open && styles.duoChipOn]}
-            >
-              <Text style={[styles.duoChipText, item.is_open && styles.duoChipTextOn]}>
-                {item.is_open ? 'open' : 'solo'}
-              </Text>
-            </TouchableOpacity>
+          {item.is_open && !isDone && (
+            loadingInterested ? (
+              <ActivityIndicator color="#ccc" size="small" />
+            ) : interested.length > 0 ? (
+              <View style={{ gap: 6 }}>
+                <Text style={styles.expandedLabel}>interested · {interested.length}</Text>
+                {interested.map((p) => (
+                  <Text key={p.id} style={styles.expandedPerson}>{p.display_name ?? 'someone'}</Text>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.expandedEmpty}>no one else interested yet</Text>
+            )
           )}
-          {item.source !== 'explore' && (
-            <TouchableOpacity
-              onPress={handleShare}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="share-outline" size={16} color={shared ? '#c9a0dc' : '#ccc'} />
-            </TouchableOpacity>
-          )}
+
+          <TouchableOpacity onPress={onDelete} style={styles.expandedDelete}>
+            <Text style={styles.expandedDeleteText}>remove from plans</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -489,6 +529,21 @@ const styles = StyleSheet.create({
   duoChipTextOn: {
     color: '#fff',
   },
+  expandedSection: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
+    backgroundColor: '#fafafa',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#f0f0f0',
+    gap: 10,
+  },
+  expandedNotes: { fontSize: 13, color: '#666', lineHeight: 19 },
+  expandedLabel: { fontSize: 11, color: '#bbb', letterSpacing: 0.5 },
+  expandedPerson: { fontSize: 14, color: '#111' },
+  expandedEmpty: { fontSize: 13, color: '#bbb', fontStyle: 'italic' },
+  expandedDelete: { paddingTop: 4 },
+  expandedDeleteText: { fontSize: 13, color: '#ccc' },
   suggestionHeader: {
     flexDirection: 'row',
     alignItems: 'center',

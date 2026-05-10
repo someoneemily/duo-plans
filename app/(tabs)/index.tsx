@@ -66,6 +66,7 @@ function PlanRow({
 
   function handleNamePress() {
     if (!canEdit) return;
+    if (!expanded) { toggleExpand(); return; }
     setDraftName(item.name);
     setEditingName(true);
     setTimeout(() => inputRef.current?.focus(), 50);

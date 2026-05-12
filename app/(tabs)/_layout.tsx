@@ -11,12 +11,14 @@ type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 const TAB_ICONS: Record<string, { active: IoniconsName; inactive: IoniconsName }> = {
   index:   { active: 'sparkles',         inactive: 'sparkles-outline' },
   explore: { active: 'search',           inactive: 'search-outline' },
+  friends: { active: 'people',           inactive: 'people-outline' },
   profile: { active: 'person-circle',    inactive: 'person-circle-outline' },
 };
 
 const TAB_HREFS: Record<string, string> = {
   index:   '/(tabs)',
   explore: '/(tabs)/explore',
+  friends: '/(tabs)/friends',
   profile: '/(tabs)/profile',
 };
 
@@ -69,6 +71,7 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="index"   options={{ title: 'plans' }} />
       <Tabs.Screen name="explore" options={{ title: 'explore' }} />
+      <Tabs.Screen name="friends" options={{ title: 'friends' }} />
       <Tabs.Screen name="profile" options={{ title: 'profile' }} />
     </Tabs>
   );

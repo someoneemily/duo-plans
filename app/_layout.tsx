@@ -54,6 +54,14 @@ export default function RootLayout() {
           name="activity/add"
           options={{ headerShown: true, title: 'Add Activity', presentation: 'modal' }}
         />
+        <Stack.Screen
+          name="friends/[listId]"
+          options={{ headerShown: true, title: '', headerLeftContainerStyle: { paddingLeft: 0 } }}
+        />
+        <Stack.Screen
+          name="friends/new"
+          options={{ headerShown: true, title: '', headerLeftContainerStyle: { paddingLeft: 0 } }}
+        />
       </Stack>
     </>
   );

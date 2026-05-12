@@ -26,6 +26,27 @@ export interface Activity {
   profiles?: Profile;
 }
 
+export type SharedListStatus = 'pending' | 'accepted' | 'declined';
+
+export interface SharedListMember {
+  id: string;
+  list_id: string;
+  user_id: string;
+  invited_by_id: string | null;
+  status: SharedListStatus;
+  responded_at: string | null;
+  created_at: string;
+  profile: Profile;
+}
+
+export interface SharedList {
+  id: string;
+  creator_id: string;
+  created_at: string;
+  members: SharedListMember[];
+  activityCount: number;
+}
+
 export interface Match {
   id: string;
   activity_name: string;

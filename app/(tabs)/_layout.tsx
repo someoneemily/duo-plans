@@ -1,9 +1,10 @@
 import { Tabs, useRouter } from 'expo-router';
 import { StyleSheet, AppState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { refreshMatchBadge } from '../../lib/matchBadge';
+import { refreshInviteBadge, subscribeInviteBadge } from '../../lib/inviteBadge';
 import { colors } from '../../lib/colors';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
@@ -25,22 +26,30 @@ const TAB_HREFS: Record<string, string> = {
 export default function TabsLayout() {
   const router = useRouter();
   const userIdRef = useRef<string | null>(null);
+  const [inviteBadge, setInviteBadge] = useState(0);
 
   useEffect(() => {
+    const unsubInvite = subscribeInviteBadge(setInviteBadge);
+
     supabase.auth.getSession().then(({ data }) => {
       const uid = data.session?.user.id ?? null;
       userIdRef.current = uid;
-      if (uid) refreshMatchBadge(uid);
+      if (uid) {
+        refreshMatchBadge(uid);
+        refreshInviteBadge(uid);
+      }
     });
 
     const appSub = AppState.addEventListener('change', (state) => {
       if (state === 'active' && userIdRef.current) {
         refreshMatchBadge(userIdRef.current);
+        refreshInviteBadge(userIdRef.current);
       }
     });
 
     return () => {
       appSub.remove();
+      unsubInvite();
     };
   }, []);
 
@@ -71,7 +80,14 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="index"   options={{ title: 'plans' }} />
       <Tabs.Screen name="explore" options={{ title: 'explore' }} />
-      <Tabs.Screen name="friends" options={{ title: 'friends' }} />
+      <Tabs.Screen
+        name="friends"
+        options={{
+          title: 'friends',
+          tabBarBadge: inviteBadge > 0 ? inviteBadge : undefined,
+          tabBarBadgeStyle: styles.badge,
+        }}
+      />
       <Tabs.Screen name="profile" options={{ title: 'profile' }} />
     </Tabs>
   );
@@ -91,5 +107,9 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     letterSpacing: 0.3,
     marginBottom: 6,
+  },
+  badge: {
+    backgroundColor: colors.accent,
+    fontSize: 9,
   },
 });

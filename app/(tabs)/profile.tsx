@@ -10,6 +10,8 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { signOut } from '../../lib/auth';
 import { getMyActivities, getInterestedUsers } from '../../lib/activities';
+import MatchBell from '../../components/MatchBell';
+import { colors } from '../../lib/colors';
 import { getMyMatches } from '../../lib/matches';
 import type { Activity, Match, Profile } from '../../lib/types';
 
@@ -160,9 +162,9 @@ export default function Profile() {
         >
         <View style={styles.titleRow}>
           <Text style={styles.pageTitle}>profile</Text>
-          <TouchableOpacity onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.refreshBtn} disabled={refreshing}>
-            {refreshing ? <ActivityIndicator size="small" color="#ccc" /> : <Text style={styles.refreshIcon}>↻</Text>}
-          </TouchableOpacity>
+          <View style={styles.headerIcons}>
+            <MatchBell />
+          </View>
         </View>
 
         {/* Identity */}
@@ -194,7 +196,7 @@ export default function Profile() {
             <Text style={styles.statLabel}>done</Text>
           </TouchableOpacity>
           <View style={styles.statDivider} />
-          <TouchableOpacity style={styles.stat} onPress={() => router.push('/(tabs)/matches')}>
+          <TouchableOpacity style={styles.stat} onPress={() => router.push('/matches' as any)}>
             <Text style={styles.statNum}>{matches.length}</Text>
             <Text style={styles.statLabel}>matches</Text>
           </TouchableOpacity>
@@ -365,20 +367,19 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   titleRow: { position: 'relative', justifyContent: 'center', alignItems: 'center' },
-  refreshBtn: { position: 'absolute', right: 20, top: 28 },
-  refreshIcon: { fontSize: 18, color: '#ccc' },
+  headerIcons: { position: 'absolute', right: 16, top: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 14 },
   identity: { alignItems: 'center', paddingBottom: 28 },
   avatar: {
     width: 64, height: 64, borderRadius: 32,
-    borderWidth: 1, borderColor: '#ddd',
+    borderWidth: 1, borderColor: colors.borderLight,
     justifyContent: 'center', alignItems: 'center',
     marginBottom: 14,
   },
   avatarText: { fontSize: 22, color: '#111', fontFamily: 'Georgia' },
   name: { fontSize: 18, color: '#111', fontFamily: 'Georgia', marginBottom: 6 },
-  tier: { fontSize: 11, color: '#c9a0dc', letterSpacing: 1.5, textTransform: 'uppercase' },
-  igHandle: { fontSize: 13, color: '#c9a0dc', textDecorationLine: 'underline' },
-  phoneNumber: { fontSize: 13, color: '#bbb', marginTop: 4 },
+  tier: { fontSize: 11, color: colors.accent, letterSpacing: 1.5, textTransform: 'uppercase' },
+  igHandle: { fontSize: 13, color: colors.accent, textDecorationLine: 'underline' },
+  phoneNumber: { fontSize: 13, color: colors.muted, marginTop: 4 },
   statsRow: {
     flexDirection: 'row',
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -387,16 +388,16 @@ const styles = StyleSheet.create({
   },
   stat: { flex: 1, paddingVertical: 20, alignItems: 'center' },
   statNum: { fontSize: 20, fontFamily: 'Georgia', color: '#111', marginBottom: 4 },
-  statLabel: { fontSize: 11, color: '#bbb', letterSpacing: 0.5 },
+  statLabel: { fontSize: 11, color: colors.muted, letterSpacing: 0.5 },
   statDivider: { width: StyleSheet.hairlineWidth, backgroundColor: '#ececec' },
   sectionLabel: {
-    fontSize: 12, color: '#999',
+    fontSize: 12, color: colors.label,
     paddingHorizontal: 20, marginTop: 28, marginBottom: 8,
   },
   searchBlock: { marginHorizontal: 20, marginBottom: 4 },
   searchWrap: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ddd',
+    borderBottomColor: colors.borderLight,
     marginBottom: 2,
   },
   searchInput: {
@@ -425,16 +426,16 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 16,
   },
   monthChipActive: { backgroundColor: '#111', borderColor: '#111' },
-  monthChipText: { fontSize: 12, color: '#999' },
+  monthChipText: { fontSize: 12, color: colors.label },
   monthChipTextActive: { color: '#fff' },
   emptyDone: {
     marginHorizontal: 20, paddingVertical: 24,
     borderWidth: 1, borderColor: '#ececec', borderRadius: 10, alignItems: 'center',
   },
-  emptyText: { fontSize: 13, color: '#ccc', fontStyle: 'italic' },
+  emptyText: { fontSize: 13, color: colors.subtle, fontStyle: 'italic' },
   logWrap: { marginHorizontal: 20 },
   dayDivider: { flexDirection: 'row', alignItems: 'center', marginTop: 20, marginBottom: 6, gap: 10 },
-  dayLabel: { fontSize: 11, color: '#bbb', letterSpacing: 0.5 },
+  dayLabel: { fontSize: 11, color: colors.muted, letterSpacing: 0.5 },
   dayLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: '#ececec' },
   logRow: {
     flexDirection: 'row',
@@ -445,21 +446,21 @@ const styles = StyleSheet.create({
   },
   logLeft: { flex: 1 },
   logName: { fontSize: 15, color: '#111' },
-  logMeta: { fontSize: 12, color: '#bbb', marginTop: 2 },
+  logMeta: { fontSize: 12, color: colors.muted, marginTop: 2 },
   logRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   lockIcon: { fontSize: 11, opacity: 0.3 },
-  chevron: { fontSize: 15, color: '#ccc' },
+  chevron: { fontSize: 15, color: colors.subtle },
   expandedBody: {
     paddingHorizontal: 4, paddingTop: 10, paddingBottom: 14,
     backgroundColor: '#fafafa',
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#ececec',
     gap: 10,
   },
-  interestedLabel: { fontSize: 11, color: '#bbb', letterSpacing: 0.5 },
+  interestedLabel: { fontSize: 11, color: colors.muted, letterSpacing: 0.5 },
   personRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   personName: { fontSize: 14, color: '#111' },
-  igLink: { fontSize: 13, color: '#c9a0dc', textDecorationLine: 'underline' },
-  noOneText: { fontSize: 13, color: '#bbb', fontStyle: 'italic' },
+  igLink: { fontSize: 13, color: colors.accent, textDecorationLine: 'underline' },
+  noOneText: { fontSize: 13, color: colors.muted, fontStyle: 'italic' },
   section: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -472,5 +473,5 @@ const styles = StyleSheet.create({
   },
   settingsLabel: { fontSize: 14, color: '#111' },
   signOut: { marginTop: 32, alignItems: 'center' },
-  signOutText: { fontSize: 13, color: '#bbb' },
+  signOutText: { fontSize: 13, color: colors.muted },
 });

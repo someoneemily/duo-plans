@@ -4,6 +4,7 @@ import {
   TouchableOpacity, SafeAreaView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { colors } from '../lib/colors';
 
 const { height: SH, width: SW } = Dimensions.get('window');
 const CARD_W = Math.min(SW * 0.80, 330);
@@ -206,7 +207,7 @@ const styles = StyleSheet.create({
   },
   headerSub: {
     fontSize: 11,
-    color: '#bbb',
+    color: colors.muted,
     marginTop: 3,
     letterSpacing: 0.4,
   },
@@ -218,10 +219,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 18,
     borderWidth: 1.5,
-    borderColor: '#c9a0dc',
+    borderColor: colors.accent,
     padding: 18,
     justifyContent: 'space-between',
-    shadowColor: '#c9a0dc',
+    shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.14,
     shadowRadius: 20,
@@ -229,14 +230,14 @@ const styles = StyleSheet.create({
   },
   cardIndex: {
     fontSize: 11,
-    color: '#ddd',
+    color: colors.borderLight,
     letterSpacing: 0.5,
     alignSelf: 'flex-end',
   },
   cardBody: { gap: 8 },
   cardCategory: {
     fontSize: 10,
-    color: '#c9a0dc',
+    color: colors.accent,
     letterSpacing: 1.4,
     textTransform: 'uppercase',
   },
@@ -249,7 +250,7 @@ const styles = StyleSheet.create({
   },
   cardTagline: {
     fontSize: 13,
-    color: '#bbb',
+    color: colors.muted,
     lineHeight: 19,
   },
 
@@ -263,7 +264,7 @@ const styles = StyleSheet.create({
   },
   scrollHintText: {
     fontSize: 11,
-    color: '#ccc',
+    color: colors.subtle,
     letterSpacing: 0.5,
   },
 
@@ -276,7 +277,7 @@ const styles = StyleSheet.create({
   },
   ctaEyebrow: {
     fontSize: 11,
-    color: '#c9a0dc',
+    color: colors.accent,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
     marginBottom: 14,
@@ -290,7 +291,7 @@ const styles = StyleSheet.create({
   },
   ctaSub: {
     fontSize: 15,
-    color: '#888',
+    color: colors.dim,
     textAlign: 'center',
     lineHeight: 23,
     marginBottom: 40,
@@ -312,7 +313,7 @@ const styles = StyleSheet.create({
   },
   ctaSignIn: {
     fontSize: 13,
-    color: '#bbb',
+    color: colors.muted,
     letterSpacing: 0.3,
   },
 });

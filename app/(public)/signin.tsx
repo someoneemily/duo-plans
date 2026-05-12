@@ -5,6 +5,7 @@ import {
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { signInWithEmail } from '../../lib/auth';
+import { colors } from '../../lib/colors';
 
 export default function SignIn() {
   const router = useRouter();
@@ -79,7 +80,7 @@ export default function SignIn() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   back: { position: 'absolute', top: 54, left: 22, zIndex: 10 },
-  backText: { fontSize: 22, color: '#bbb' },
+  backText: { fontSize: 22, color: colors.muted },
   inner: { flex: 1, padding: 28, justifyContent: 'center' },
   wordmark: {
     fontFamily: 'Georgia',
@@ -88,7 +89,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     fontWeight: '400',
   },
-  tagline: { fontSize: 14, color: '#bbb', fontStyle: 'italic', marginBottom: 48 },
+  tagline: { fontSize: 14, color: colors.muted, fontStyle: 'italic', marginBottom: 48 },
   input: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#e0e0e0',

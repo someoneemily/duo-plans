@@ -5,6 +5,7 @@ import {
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { signInWithEmail, signUpWithEmail } from '../lib/auth';
+import { colors } from '../lib/colors';
 
 export default function Auth() {
   const router = useRouter();
@@ -119,11 +120,11 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     fontWeight: '400',
   },
-  tagline: { fontSize: 14, color: '#bbb', fontStyle: 'italic', marginBottom: 48 },
+  tagline: { fontSize: 14, color: colors.muted, fontStyle: 'italic', marginBottom: 48 },
   toggle: { flexDirection: 'row', marginBottom: 32 },
-  toggleOpt: { fontSize: 14, color: '#bbb' },
+  toggleOpt: { fontSize: 14, color: colors.muted },
   toggleActive: { color: '#111' },
-  toggleSep: { fontSize: 14, color: '#ccc' },
+  toggleSep: { fontSize: 14, color: colors.subtle },
   input: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#e0e0e0',

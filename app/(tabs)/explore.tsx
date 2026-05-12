@@ -8,6 +8,8 @@ import { supabase } from '../../lib/supabase';
 import { addActivity, getMyActivities, getOpenActivities, getOpenActivitiesPublic, deleteActivity, getInterestedUsers } from '../../lib/activities';
 import { openInstagram } from '../../lib/linking';
 import LinkText from '../../components/LinkText';
+import MatchBell from '../../components/MatchBell';
+import { colors } from '../../lib/colors';
 import type { Activity, Category, Profile } from '../../lib/types';
 
 const CATEGORIES = ['all', 'restaurant', 'experience', 'travel'];
@@ -269,9 +271,9 @@ export default function Explore() {
           <View>
             <View style={styles.titleRow}>
               <Text style={styles.pageTitle}>explore</Text>
-              <TouchableOpacity onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.refreshBtn} disabled={refreshing}>
-                {refreshing ? <ActivityIndicator size="small" color="#ccc" /> : <Text style={styles.refreshIcon}>↻</Text>}
-              </TouchableOpacity>
+              <View style={styles.headerIcons}>
+                <MatchBell />
+              </View>
             </View>
             <View style={styles.searchWrap}>
               <TextInput
@@ -402,8 +404,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   list: { paddingBottom: 40 },
   titleRow: { position: 'relative', justifyContent: 'center', alignItems: 'center' },
-  refreshBtn: { position: 'absolute', right: 20, top: 28 },
-  refreshIcon: { fontSize: 18, color: '#ccc' },
+  headerIcons: { position: 'absolute', right: 16, top: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 14 },
   pageTitle: {
     fontFamily: 'Georgia',
     fontSize: 26,
@@ -423,9 +424,9 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', paddingHorizontal: 20, gap: 8, marginBottom: 20, flexWrap: 'wrap' },
   chip: { paddingHorizontal: 14, paddingVertical: 6, borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 20 },
   chipActive: { backgroundColor: '#111', borderColor: '#111' },
-  chipText: { fontSize: 12, color: '#999' },
+  chipText: { fontSize: 12, color: colors.label },
   chipTextActive: { color: '#fff' },
-  sectionLabel: { fontSize: 12, color: '#999', paddingHorizontal: 20, marginBottom: 8 },
+  sectionLabel: { fontSize: 12, color: colors.label, paddingHorizontal: 20, marginBottom: 8 },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -434,7 +435,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: '#e0e0e0' },
-  dividerText: { fontSize: 11, color: '#bbb', letterSpacing: 0.8 },
+  dividerText: { fontSize: 11, color: colors.muted, letterSpacing: 0.8 },
   row: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 20, paddingVertical: 16,
@@ -445,31 +446,31 @@ const styles = StyleSheet.create({
   rowName: { fontSize: 15, color: '#111' },
   ownBadge: {
     paddingHorizontal: 7, paddingVertical: 2,
-    borderRadius: 10, borderWidth: 1, borderColor: '#c9a0dc',
+    borderRadius: 10, borderWidth: 1, borderColor: colors.accent,
   },
-  ownBadgeText: { fontSize: 10, color: '#c9a0dc', letterSpacing: 0.5 },
-  rowMeta: { fontSize: 12, color: '#bbb' },
+  ownBadgeText: { fontSize: 10, color: colors.accent, letterSpacing: 0.5 },
+  rowMeta: { fontSize: 12, color: colors.muted },
   heartBtn: { padding: 4 },
-  heartIcon: { fontSize: 20, color: '#ddd' },
-  heartIconActive: { color: '#c9a0dc' },
+  heartIcon: { fontSize: 20, color: colors.borderLight },
+  heartIconActive: { color: colors.accent },
   expandedBody: {
     paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16,
     backgroundColor: '#fafafa',
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#ececec',
     gap: 10,
   },
-  expandedNotes: { fontSize: 13, color: '#666', lineHeight: 19 },
+  expandedNotes: { fontSize: 13, color: colors.secondary, lineHeight: 19 },
   expandedDates: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   expandedDateChip: {
     paddingHorizontal: 8, paddingVertical: 3,
     borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 10,
   },
-  expandedDateText: { fontSize: 11, color: '#888' },
-  interestedLabel: { fontSize: 11, color: '#bbb', letterSpacing: 0.5, marginBottom: 2 },
+  expandedDateText: { fontSize: 11, color: colors.dim },
+  interestedLabel: { fontSize: 11, color: colors.muted, letterSpacing: 0.5, marginBottom: 2 },
   personRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   personName: { fontSize: 14, color: '#111' },
-  igHandle: { fontSize: 13, color: '#c9a0dc', textDecorationLine: 'underline' },
-  noOneText: { fontSize: 13, color: '#bbb', fontStyle: 'italic' },
+  igHandle: { fontSize: 13, color: colors.accent, textDecorationLine: 'underline' },
+  noOneText: { fontSize: 13, color: colors.muted, fontStyle: 'italic' },
   empty: { paddingHorizontal: 20, paddingTop: 40 },
-  emptyText: { fontSize: 14, color: '#bbb', fontStyle: 'italic' },
+  emptyText: { fontSize: 14, color: colors.muted, fontStyle: 'italic' },
 });

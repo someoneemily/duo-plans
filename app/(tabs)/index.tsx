@@ -12,6 +12,8 @@ import { getMyActivities, addActivity, toggleOpen, deleteActivity, markAsComplet
 import { validateActivityName } from '../../lib/validate';
 import CompletionCelebration from '../../components/CompletionCelebration';
 import LinkText from '../../components/LinkText';
+import MatchBell from '../../components/MatchBell';
+import { colors } from '../../lib/colors';
 import type { Activity, Category, Profile } from '../../lib/types';
 
 function formatPlanDates(dates: string[]): string {
@@ -149,7 +151,7 @@ function PlanRow({
             )}
             {item.source !== 'explore' && (
               <TouchableOpacity onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="share-outline" size={16} color={shared ? '#c9a0dc' : '#ccc'} />
+                <Ionicons name="share-outline" size={16} color={shared ? colors.accent : colors.subtle} />
               </TouchableOpacity>
             )}
           </View>
@@ -316,9 +318,9 @@ export default function MyPlans() {
       >
         <View style={styles.titleRow}>
           <Text style={styles.pageTitle}>my plans</Text>
-          <TouchableOpacity onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.refreshBtn} disabled={refreshing}>
-            {refreshing ? <ActivityIndicator size="small" color="#ccc" /> : <Text style={styles.refreshIcon}>↻</Text>}
-          </TouchableOpacity>
+          <View style={styles.headerIcons}>
+            <MatchBell />
+          </View>
         </View>
 
         {/* Suggestions */}
@@ -380,6 +382,12 @@ export default function MyPlans() {
           </View>
         ) : (
           <View style={styles.planList}>
+            <TouchableOpacity
+              style={[styles.outlineBtn, { alignSelf: 'flex-start', margin: 16 }]}
+              onPress={() => router.push('/activity/add')}
+            >
+              <Text style={styles.outlineBtnText}>+ ADD</Text>
+            </TouchableOpacity>
             {created.map((item) => (
               <PlanRow
                 key={item.id}
@@ -390,12 +398,6 @@ export default function MyPlans() {
                 onUpdate={(name) => handleUpdate(item, name)}
               />
             ))}
-            <TouchableOpacity
-              style={[styles.outlineBtn, { alignSelf: 'flex-start', margin: 16 }]}
-              onPress={() => router.push('/activity/add')}
-            >
-              <Text style={styles.outlineBtnText}>+ ADD</Text>
-            </TouchableOpacity>
           </View>
         )}
 
@@ -457,8 +459,8 @@ const styles = StyleSheet.create({
   rowCenter: { flex: 1 },
   scroll: { paddingBottom: 60 },
   titleRow: { position: 'relative', justifyContent: 'center', alignItems: 'center' },
-  refreshBtn: { position: 'absolute', right: 20, top: 28 },
-  refreshIcon: { fontSize: 18, color: '#ccc' },
+  headerIcons: { position: 'absolute', right: 16, top: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  refreshIcon: { fontSize: 18, color: colors.subtle },
   pageTitle: {
     fontFamily: 'Georgia',
     fontSize: 26,
@@ -468,7 +470,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     fontWeight: '400',
   },
-  sectionLabel: { fontSize: 12, color: '#999', paddingHorizontal: 20, marginBottom: 10 },
+  sectionLabel: { fontSize: 12, color: colors.label, paddingHorizontal: 20, marginBottom: 10 },
   emptyCard: {
     marginHorizontal: 20,
     borderWidth: 1,
@@ -484,8 +486,8 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 8,
     justifyContent: 'center', alignItems: 'center',
   },
-  plusText: { fontSize: 22, color: '#ccc', fontWeight: '300' },
-  emptyHint: { fontSize: 13, color: '#bbb', fontStyle: 'italic', textAlign: 'center' },
+  plusText: { fontSize: 22, color: colors.subtle, fontWeight: '300' },
+  emptyHint: { fontSize: 13, color: colors.muted, fontStyle: 'italic', textAlign: 'center' },
   outlineBtn: {
     borderWidth: 1, borderColor: '#111',
     paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20,
@@ -504,27 +506,27 @@ const styles = StyleSheet.create({
   },
   rowDone: { opacity: 0.45 },
   circle: { width: 28, height: 28, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  circleEmpty: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: '#ccc' },
-  circleDone: { fontSize: 13, color: '#c9a0dc' },
+  circleEmpty: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: colors.subtle },
+  circleDone: { fontSize: 13, color: colors.accent },
   planName: { fontSize: 15, color: '#111' },
   nameInput: { padding: 0, margin: 0 },
-  planNameDone: { textDecorationLine: 'line-through', color: '#bbb' },
-  planMeta: { fontSize: 12, color: '#bbb', marginTop: 2 },
+  planNameDone: { textDecorationLine: 'line-through', color: colors.muted },
+  planMeta: { fontSize: 12, color: colors.muted, marginTop: 2 },
   right: { flexDirection: 'row', alignItems: 'center', gap: 14, marginLeft: 8 },
   duoChip: {
     paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.borderLight,
   },
   duoChipOn: {
-    backgroundColor: '#c9a0dc',
-    borderColor: '#c9a0dc',
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
   duoChipText: {
     fontSize: 10,
-    color: '#bbb',
+    color: colors.muted,
     letterSpacing: 0.5,
   },
   duoChipTextOn: {
@@ -539,12 +541,12 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f0f0f0',
     gap: 10,
   },
-  expandedNotes: { fontSize: 13, color: '#666', lineHeight: 19 },
-  expandedLabel: { fontSize: 11, color: '#bbb', letterSpacing: 0.5 },
+  expandedNotes: { fontSize: 13, color: colors.secondary, lineHeight: 19 },
+  expandedLabel: { fontSize: 11, color: colors.muted, letterSpacing: 0.5 },
   expandedPerson: { fontSize: 14, color: '#111' },
-  expandedEmpty: { fontSize: 13, color: '#bbb', fontStyle: 'italic' },
+  expandedEmpty: { fontSize: 13, color: colors.muted, fontStyle: 'italic' },
   expandedDelete: { paddingTop: 4 },
-  expandedDeleteText: { fontSize: 13, color: '#ccc' },
+  expandedDeleteText: { fontSize: 13, color: colors.subtle },
   suggestionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -563,12 +565,12 @@ const styles = StyleSheet.create({
   },
   suggestionAddBtn: {
     borderWidth: 1,
-    borderColor: '#c9a0dc',
+    borderColor: colors.accent,
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  suggestionAddText: { fontSize: 11, color: '#c9a0dc', letterSpacing: 0.5 },
-  suggestionDismiss: { fontSize: 18, color: '#ccc', lineHeight: 20 },
-  refreshIconDisabled: { color: '#e8e8e8' },
+  suggestionAddText: { fontSize: 11, color: colors.accent, letterSpacing: 0.5 },
+  suggestionDismiss: { fontSize: 18, color: colors.subtle, lineHeight: 20 },
+  refreshIconDisabled: { color: colors.disabled },
 });

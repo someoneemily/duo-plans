@@ -2,14 +2,15 @@ import {
   View, Text, FlatList, StyleSheet, SafeAreaView,
   ActivityIndicator, RefreshControl, TouchableOpacity, Linking,
 } from 'react-native';
-import { useState, useCallback } from 'react';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { supabase } from '../../lib/supabase';
-import { getMyMatches } from '../../lib/matches';
-import { getInterestedUsers } from '../../lib/activities';
-import { openInstagram } from '../../lib/linking';
-import { markMatchesSeen } from '../../lib/matchBadge';
-import type { Match, Profile } from '../../lib/types';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter, Stack } from 'expo-router';
+import { supabase } from '../lib/supabase';
+import { getMyMatches } from '../lib/matches';
+import { getInterestedUsers } from '../lib/activities';
+import { openInstagram } from '../lib/linking';
+import { markMatchesSeen } from '../lib/matchBadge';
+import { colors } from '../lib/colors';
+import type { Match, Profile } from '../lib/types';
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -40,23 +41,29 @@ export default function Matches() {
     }
   }
 
-  useFocusEffect(
-    useCallback(() => {
-      markMatchesSeen();
-      supabase.auth.getSession().then(({ data }) => {
-        const uid = data.session?.user.id ?? null;
-        setUserId(uid);
-        if (uid) load(uid);
-        else router.replace('/(public)/explore');
-      });
-    }, [])
-  );
+  useEffect(() => {
+    markMatchesSeen();
+    supabase.auth.getSession().then(({ data }) => {
+      const uid = data.session?.user.id ?? null;
+      setUserId(uid);
+      if (uid) load(uid);
+      else setLoading(false);
+    });
+  }, []);
 
   const onRefresh = useCallback(() => {
     if (!userId) return;
     setRefreshing(true);
     load(userId);
   }, [userId]);
+
+  function handleBack() {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
+  }
 
   async function handleToggleExpand(match: Match) {
     if (expandedId === match.id) {
@@ -78,6 +85,11 @@ export default function Matches() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
+        <Stack.Screen options={{ headerLeft: () => (
+          <TouchableOpacity onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Text style={styles.backBtn}>‹</Text>
+          </TouchableOpacity>
+        )}} />
         <View style={styles.center}><ActivityIndicator color="#ccc" /></View>
       </SafeAreaView>
     );
@@ -85,6 +97,11 @@ export default function Matches() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <Stack.Screen options={{ headerLeft: () => (
+        <TouchableOpacity onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Text style={styles.backBtn}>‹</Text>
+        </TouchableOpacity>
+      )}} />
       <FlatList
         data={matches}
         keyExtractor={(item) => item.id}
@@ -94,9 +111,6 @@ export default function Matches() {
           <View>
             <View style={styles.titleRow}>
               <Text style={styles.pageTitle}>matches activity</Text>
-              <TouchableOpacity onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={styles.refreshBtn} disabled={refreshing}>
-                {refreshing ? <ActivityIndicator size="small" color="#ccc" /> : <Text style={styles.refreshIcon}>↻</Text>}
-              </TouchableOpacity>
             </View>
             <Text style={styles.sectionLabel}>
               {matches.length > 0 ? `${matches.length} connection${matches.length > 1 ? 's' : ''}` : 'connections'}
@@ -176,10 +190,9 @@ export default function Matches() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  backBtn: { fontSize: 28, color: colors.muted, paddingLeft: 16 },
   list: { paddingBottom: 40 },
   titleRow: { position: 'relative', justifyContent: 'center', alignItems: 'center' },
-  refreshBtn: { position: 'absolute', right: 20, top: 28 },
-  refreshIcon: { fontSize: 18, color: '#ccc' },
   pageTitle: {
     fontFamily: 'Georgia',
     fontSize: 26,
@@ -189,7 +202,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     fontWeight: '400',
   },
-  sectionLabel: { fontSize: 12, color: '#999', paddingHorizontal: 20, marginBottom: 8 },
+  sectionLabel: { fontSize: 12, color: colors.label, paddingHorizontal: 20, marginBottom: 8 },
   emptyCard: {
     marginHorizontal: 20,
     marginTop: 8,
@@ -200,7 +213,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   emptyTitle: { fontSize: 15, color: '#111', fontStyle: 'italic' },
-  emptySub: { fontSize: 13, color: '#bbb', lineHeight: 20 },
+  emptySub: { fontSize: 13, color: colors.muted, lineHeight: 20 },
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -210,11 +223,11 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ececec',
     gap: 12,
   },
-  accent: { fontSize: 12, color: '#c9a0dc', marginTop: 3 },
+  accent: { fontSize: 12, color: colors.accent, marginTop: 3 },
   rowBody: { flex: 1 },
   rowName: { fontSize: 15, color: '#111', marginBottom: 3 },
-  rowMeta: { fontSize: 12, color: '#bbb' },
-  chevron: { fontSize: 16, color: '#ccc', marginTop: 1 },
+  rowMeta: { fontSize: 12, color: colors.muted },
+  chevron: { fontSize: 16, color: colors.subtle, marginTop: 1 },
   expandedBody: {
     paddingHorizontal: 20,
     paddingTop: 12,
@@ -224,7 +237,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ececec',
     gap: 12,
   },
-  interestedLabel: { fontSize: 11, color: '#bbb', letterSpacing: 0.5 },
+  interestedLabel: { fontSize: 11, color: colors.muted, letterSpacing: 0.5 },
   personRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -234,8 +247,8 @@ const styles = StyleSheet.create({
   contactRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
   contactLink: {
     fontSize: 13,
-    color: '#c9a0dc',
+    color: colors.accent,
     textDecorationLine: 'underline',
   },
-  noOneText: { fontSize: 13, color: '#bbb', fontStyle: 'italic' },
+  noOneText: { fontSize: 13, color: colors.muted, fontStyle: 'italic' },
 });

@@ -43,8 +43,12 @@ export default function RootLayout() {
         <Stack.Screen name="(public)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
+          name="matches"
+          options={{ headerShown: true, title: '', headerLeftContainerStyle: { paddingLeft: 0 } }}
+        />
+        <Stack.Screen
           name="activity/[id]"
-          options={{ headerShown: true, title: '', headerBackTitle: 'Back' }}
+          options={{ headerShown: true, title: '', headerLeftContainerStyle: { paddingLeft: 0 } }}
         />
         <Stack.Screen
           name="activity/add"

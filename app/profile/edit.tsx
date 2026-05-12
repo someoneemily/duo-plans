@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { getProfile, updateProfile } from '../../lib/profile';
 import { validateHandle, validatePhone } from '../../lib/validate';
+import { colors } from '../../lib/colors';
 
 export default function EditProfile() {
   const router = useRouter();
@@ -125,7 +126,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 11,
-    color: '#bbb',
+    color: colors.muted,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
     marginBottom: 10,
@@ -140,7 +141,7 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontSize: 12,
-    color: '#ccc',
+    color: colors.subtle,
     fontStyle: 'italic',
     textAlign: 'center',
     marginBottom: 36,

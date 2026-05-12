@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, Modal, TouchableOpacity, Animated } from 'react-native';
+import { colors } from '../lib/colors';
 
 const PARTICLES = [
   { x: -80, y: -90 }, { x: 80, y: -90 },
@@ -104,7 +105,7 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   particle: { position: 'absolute' },
-  particleText: { fontSize: 12, color: '#c9a0dc' },
+  particleText: { fontSize: 12, color: colors.accent },
   checkCircle: {
     width: 64,
     height: 64,
@@ -119,7 +120,7 @@ const styles = StyleSheet.create({
   doneLabel: {
     fontFamily: 'Georgia',
     fontSize: 11,
-    color: '#bbb',
+    color: colors.muted,
     letterSpacing: 2,
     marginBottom: 10,
   },
@@ -132,7 +133,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 13,
-    color: '#bbb',
+    color: colors.muted,
     fontStyle: 'italic',
     marginBottom: 32,
   },

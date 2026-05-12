@@ -12,6 +12,7 @@ import {
 } from '../../lib/activities';
 import { setPendingDeepLink } from '../../lib/pendingDeepLink';
 import CompletionCelebration from '../../components/CompletionCelebration';
+import { colors } from '../../lib/colors';
 import type { Activity } from '../../lib/types';
 
 type InterestedPerson = { id: string; display_name: string | null; avatar_url?: string | null };
@@ -151,7 +152,7 @@ export default function ActivityDetail() {
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ headerLeft: () => (
         <TouchableOpacity onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Text style={styles.backBtn}>‹ Back</Text>
+          <Text style={styles.backBtn}>‹</Text>
         </TouchableOpacity>
       )}} />
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -253,9 +254,9 @@ export default function ActivityDetail() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  backBtn: { fontSize: 17, color: '#007AFF', paddingLeft: 4 },
+  backBtn: { fontSize: 28, color: colors.muted, paddingLeft: 16 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  notFound: { fontSize: 15, color: '#999' },
+  notFound: { fontSize: 15, color: colors.label },
   scroll: { paddingBottom: 60 },
   shareButton: {
     alignSelf: 'flex-end',
@@ -265,9 +266,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#ddd',
+    borderColor: colors.borderLight,
   },
-  shareText: { fontSize: 12, color: '#999', letterSpacing: 0.5 },
+  shareText: { fontSize: 12, color: colors.label, letterSpacing: 0.5 },
   hero: {
     padding: 24,
     paddingTop: 16,
@@ -276,7 +277,7 @@ const styles = StyleSheet.create({
   },
   category: {
     fontSize: 11,
-    color: '#c9a0dc',
+    color: colors.accent,
     fontWeight: '600',
     letterSpacing: 1,
     textTransform: 'uppercase',
@@ -289,7 +290,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     lineHeight: 34,
   },
-  notes: { fontSize: 14, color: '#888', marginTop: 10, lineHeight: 21 },
+  notes: { fontSize: 14, color: colors.dim, marginTop: 10, lineHeight: 21 },
   section: {
     paddingHorizontal: 24,
     paddingVertical: 20,
@@ -298,7 +299,7 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: 11,
-    color: '#bbb',
+    color: colors.muted,
     fontWeight: '500',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
@@ -310,16 +311,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5eeff',
     justifyContent: 'center', alignItems: 'center',
   },
-  avatarText: { fontSize: 13, color: '#c9a0dc', fontWeight: '600' },
+  avatarText: { fontSize: 13, color: colors.accent, fontWeight: '600' },
   personName: { fontSize: 15, color: '#111' },
   openRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   openLabel: { fontSize: 14, color: '#111', fontWeight: '500' },
-  openSub: { fontSize: 12, color: '#bbb', marginTop: 3 },
+  openSub: { fontSize: 12, color: colors.muted, marginTop: 3 },
   toggle: {
     width: 46, height: 26, borderRadius: 13, backgroundColor: '#e0e0e0',
     justifyContent: 'center', paddingHorizontal: 2,
   },
-  toggleOn: { backgroundColor: '#c9a0dc' },
+  toggleOn: { backgroundColor: colors.accent },
   toggleThumb: {
     width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
@@ -335,20 +336,20 @@ const styles = StyleSheet.create({
     marginHorizontal: 24, marginTop: 28, paddingVertical: 14,
     borderRadius: 12, backgroundColor: '#f5eeff', alignItems: 'center',
   },
-  completedText: { color: '#c9a0dc', fontSize: 12, fontWeight: '600', letterSpacing: 1 },
+  completedText: { color: colors.accent, fontSize: 12, fontWeight: '600', letterSpacing: 1 },
   deleteButton: {
     marginHorizontal: 24, marginTop: 8, paddingVertical: 14, alignItems: 'center',
   },
-  deleteText: { color: '#ddd', fontSize: 13 },
+  deleteText: { color: colors.borderLight, fontSize: 13 },
   ctaSection: {
     marginTop: 48, paddingHorizontal: 24, alignItems: 'center',
   },
-  ctaLabel: { fontSize: 13, color: '#bbb', fontStyle: 'italic', marginBottom: 24 },
+  ctaLabel: { fontSize: 13, color: colors.muted, fontStyle: 'italic', marginBottom: 24 },
   ctaButton: {
     borderWidth: 1, borderColor: '#111', paddingVertical: 14,
     borderRadius: 24, alignItems: 'center', width: '100%',
   },
   ctaButtonText: { fontSize: 11, color: '#111', letterSpacing: 1.5, fontWeight: '500' },
   ctaSecondary: { marginTop: 16, paddingVertical: 8 },
-  ctaSecondaryText: { fontSize: 14, color: '#bbb' },
+  ctaSecondaryText: { fontSize: 14, color: colors.muted },
 });

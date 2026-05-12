@@ -10,6 +10,7 @@ import { supabase } from '../../lib/supabase';
 import { addActivity } from '../../lib/activities';
 import { validateActivityName } from '../../lib/validate';
 import type { Category } from '../../lib/types';
+import { colors } from '../../lib/colors';
 
 const CATEGORIES: Category[] = ['Restaurant', 'Experience', 'Travel', 'Other'];
 
@@ -139,7 +140,7 @@ export default function AddActivity() {
                   paddingTop: 12,
                   paddingBottom: 12,
                   fontSize: 16,
-                  color: '#999',
+                  color: colors.label,
                   background: 'transparent',
                   outline: 'none',
                   width: '100%',
@@ -224,7 +225,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 11,
-    color: '#bbb',
+    color: colors.muted,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
     marginBottom: 12,
@@ -239,7 +240,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   chipActive: { backgroundColor: '#111', borderColor: '#111' },
-  chipText: { fontSize: 13, color: '#999' },
+  chipText: { fontSize: 13, color: colors.label },
   chipTextActive: { color: '#fff' },
   notes: {
     fontSize: 16,
@@ -258,11 +259,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderWidth: 1,
-    borderColor: '#c9a0dc',
+    borderColor: colors.accent,
     borderRadius: 14,
   },
-  dateChipText: { fontSize: 12, color: '#c9a0dc' },
-  dateChipX: { fontSize: 14, color: '#c9a0dc', lineHeight: 16 },
+  dateChipText: { fontSize: 12, color: colors.accent },
+  dateChipX: { fontSize: 14, color: colors.accent, lineHeight: 16 },
   dateNativeInput: {
     fontSize: 16,
     color: '#111',
@@ -283,12 +284,12 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   openLabel: { fontSize: 14, color: '#111', marginBottom: 3 },
-  openSub: { fontSize: 12, color: '#bbb' },
+  openSub: { fontSize: 12, color: colors.muted },
   toggle: {
     width: 42, height: 24, borderRadius: 12, backgroundColor: '#e0e0e0',
     justifyContent: 'center', paddingHorizontal: 2,
   },
-  toggleOn: { backgroundColor: '#c9a0dc' },
+  toggleOn: { backgroundColor: colors.accent },
   thumb: {
     width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2,

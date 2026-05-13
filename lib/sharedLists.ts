@@ -65,6 +65,32 @@ export async function getMySharedLists(userId: string): Promise<SharedList[]> {
   });
 }
 
+export interface ListInvite {
+  listId: string;
+  invitedBy: { id: string; display_name: string | null };
+  createdAt: string;
+}
+
+export async function getPendingListInvites(userId: string): Promise<ListInvite[]> {
+  const { data } = await supabase
+    .from('shared_list_members')
+    .select(`
+      list_id,
+      created_at,
+      profiles!invited_by_id (id, display_name)
+    `)
+    .eq('user_id', userId)
+    .eq('status', 'pending')
+    .not('invited_by_id', 'is', null)
+    .order('created_at', { ascending: false });
+
+  return (data ?? []).map((row) => ({
+    listId: row.list_id,
+    invitedBy: row.profiles as unknown as { id: string; display_name: string | null },
+    createdAt: row.created_at,
+  }));
+}
+
 export async function findListWithMembers(
   userId: string,
   otherUserIds: string[]

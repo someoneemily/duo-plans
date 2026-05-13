@@ -6,6 +6,7 @@ export async function getMyActivities(userId: string): Promise<Activity[]> {
     .from('activities')
     .select('*')
     .eq('user_id', userId)
+    .eq('is_list_only', false)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -52,6 +53,7 @@ export async function addActivity(params: {
   category: Category;
   notes?: string;
   isOpen: boolean;
+  isListOnly?: boolean;
   source?: 'self' | 'explore';
   dates?: string[];
 }): Promise<Activity> {
@@ -64,6 +66,7 @@ export async function addActivity(params: {
       notes: params.notes ?? null,
       is_open: params.isOpen,
       is_private: !params.isOpen,
+      is_list_only: params.isListOnly ?? false,
       source: params.source ?? 'self',
       dates: params.dates && params.dates.length > 0 ? params.dates : null,
     })

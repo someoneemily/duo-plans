@@ -5,9 +5,10 @@ import {
   ActivityIndicator, Alert,
 } from 'react-native';
 import { useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { addActivity } from '../../lib/activities';
+import { addActivityToList } from '../../lib/sharedLists';
 import { validateActivityName } from '../../lib/validate';
 import type { Category } from '../../lib/types';
 import { colors } from '../../lib/colors';
@@ -23,10 +24,12 @@ function formatDate(dateStr: string): string {
 
 export default function AddActivity() {
   const router = useRouter();
+  const { listId } = useLocalSearchParams<{ listId?: string }>();
+  const isListAdd = !!listId;
   const [name, setName] = useState('');
   const [category, setCategory] = useState<Category | ''>('');
   const [notes, setNotes] = useState('');
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(!isListAdd);
   const [dates, setDates] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
@@ -57,14 +60,18 @@ export default function AddActivity() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not signed in');
-      await addActivity({
+      const activity = await addActivity({
         userId: session.user.id,
         name: name.trim(),
         category: category as Category,
         notes: notes.trim() || undefined,
-        isOpen,
+        isOpen: isListAdd ? false : isOpen,
+        isListOnly: isListAdd,
         dates: dates.length > 0 ? dates : undefined,
       });
+      if (isListAdd && listId) {
+        await addActivityToList(listId, activity.id, session.user.id);
+      }
       router.back();
     } catch (err: any) {
       Alert.alert('', err.message ?? 'Could not save');
@@ -78,7 +85,7 @@ export default function AddActivity() {
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
-          <Text style={styles.pageTitle}>add plan</Text>
+          <Text style={styles.pageTitle}>{isListAdd ? 'add to list' : 'add plan'}</Text>
 
           <TextInput
             style={[styles.nameInput, { outline: 'none' } as any, nameError ? styles.inputError : null]}
@@ -168,15 +175,17 @@ export default function AddActivity() {
             )
           }
 
-          <TouchableOpacity style={styles.openRow} onPress={() => setIsOpen(!isOpen)}>
-            <View>
-              <Text style={styles.openLabel}>open to doing with someone</Text>
-              <Text style={styles.openSub}>others can see you're interested</Text>
-            </View>
-            <View style={[styles.toggle, isOpen && styles.toggleOn]}>
-              <View style={[styles.thumb, isOpen && styles.thumbOn]} />
-            </View>
-          </TouchableOpacity>
+          {!isListAdd && (
+            <TouchableOpacity style={styles.openRow} onPress={() => setIsOpen(!isOpen)}>
+              <View>
+                <Text style={styles.openLabel}>open to doing with someone</Text>
+                <Text style={styles.openSub}>others can see you're interested</Text>
+              </View>
+              <View style={[styles.toggle, isOpen && styles.toggleOn]}>
+                <View style={[styles.thumb, isOpen && styles.thumbOn]} />
+              </View>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={[styles.save, saving && styles.saveDisabled]}

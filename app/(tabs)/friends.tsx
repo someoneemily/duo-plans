@@ -13,7 +13,7 @@ import { checkIsFriendsBetaUser, hasFriendsEntered, setFriendsEntered } from '..
 import { colors } from '../../lib/colors';
 import type { SharedList, Profile } from '../../lib/types';
 
-type BetaState = 'checking' | 'none' | 'eligible' | 'entered';
+type BetaState = 'checking' | 'none' | 'eligible' | 'entering' | 'entered';
 
 type AffinityPerson = {
   profile: Profile;
@@ -39,10 +39,11 @@ function Avatar({ name, size = 34 }: { name: string | null; size?: number }) {
   );
 }
 
-function SharedListRow({ list, userId, onRespond }: {
+function SharedListRow({ list, userId, onRespond, onNavigate }: {
   list: SharedList;
   userId: string;
   onRespond: () => void;
+  onNavigate: () => void;
 }) {
   const router = useRouter();
   const label = listLabel(list, userId);
@@ -68,7 +69,7 @@ function SharedListRow({ list, userId, onRespond }: {
   return (
     <TouchableOpacity
       style={[styles.row, isDeclined && styles.rowDeclined]}
-      onPress={canNavigate ? () => router.push(`/friends/${list.id}` as any) : undefined}
+      onPress={canNavigate ? () => { onNavigate(); router.push(`/friends/${list.id}` as any); } : undefined}
       activeOpacity={canNavigate ? 0.7 : 1}
     >
       <View style={styles.rowAvatars}>
@@ -78,15 +79,6 @@ function SharedListRow({ list, userId, onRespond }: {
       </View>
       <View style={styles.rowBody}>
         <Text style={[styles.rowName, isDeclined && { color: colors.muted }]}>{label}</Text>
-        <Text style={styles.rowMeta}>
-          {isActive
-            ? `${list.activityCount} ${list.activityCount === 1 ? 'activity' : 'activities'}`
-            : isInviter
-            ? 'pending'
-            : isDeclined
-            ? 'declined'
-            : 'invited you'}
-        </Text>
       </View>
       {isInvitee && (
         <View style={styles.respondRow}>
@@ -154,9 +146,11 @@ export default function Friends() {
   const comingSoonOpacity = useRef(new Animated.Value(0)).current;
   const comingSoonY = useRef(new Animated.Value(10)).current;
   const pillOpacity = useRef(new Animated.Value(0)).current;
+  const screenOpacity = useRef(new Animated.Value(1)).current;
 
   // Beta gate
   const [betaState, setBetaState] = useState<BetaState>('checking');
+  const returningFromSubscreen = useRef(false);
 
   // Data
   const [userId, setUserId] = useState<string | null>(null);
@@ -165,12 +159,13 @@ export default function Friends() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  function runComingSoonAnimation(showPill: boolean) {
+  function runComingSoonAnimation(showPill: boolean, onDone?: () => void) {
     titleOpacity.setValue(0);
     titleY.setValue(10);
     comingSoonOpacity.setValue(0);
     comingSoonY.setValue(10);
     pillOpacity.setValue(0);
+    screenOpacity.setValue(1);
 
     const seq: Animated.CompositeAnimation[] = [
       Animated.parallel([
@@ -187,7 +182,12 @@ export default function Friends() {
       seq.push(Animated.delay(400));
       seq.push(Animated.timing(pillOpacity, { toValue: 1, duration: 500, useNativeDriver: true }));
     }
-    Animated.sequence(seq).start();
+    if (onDone) {
+      seq.push(Animated.timing(screenOpacity, { toValue: 0, duration: 500, useNativeDriver: true }));
+    }
+    Animated.sequence(seq).start(({ finished }) => {
+      if (finished && onDone) onDone();
+    });
   }
 
   async function load(uid: string) {
@@ -234,6 +234,13 @@ export default function Friends() {
     useCallback(() => {
       markInvitesSeen();
 
+      // Returning from a friends sub-screen — just reload data, no animation
+      if (returningFromSubscreen.current) {
+        returningFromSubscreen.current = false;
+        if (userId) load(userId);
+        return;
+      }
+
       supabase.auth.getSession().then(async ({ data }) => {
         const uid = data.session?.user.id ?? null;
         setUserId(uid);
@@ -242,8 +249,11 @@ export default function Friends() {
 
         const entered = await hasFriendsEntered();
         if (entered) {
-          setBetaState('entered');
-          load(uid);
+          setBetaState('entering');
+          runComingSoonAnimation(false, () => {
+            setBetaState('entered');
+            load(uid);
+          });
           return;
         }
 
@@ -272,16 +282,23 @@ export default function Friends() {
     if (userId) load(userId);
   }
 
-  const myMemberStatus = (l: SharedList) => l.members.find((m) => m.user_id === userId)?.status;
-  const active = sharedLists.filter((l) => myMemberStatus(l) === 'accepted');
-  const pending = sharedLists.filter((l) => myMemberStatus(l) === 'pending');
-  const declined = sharedLists.filter((l) => myMemberStatus(l) === 'declined');
+  const isAllDeclined = (l: SharedList) => {
+    const nonCreator = l.members.filter((m) => m.user_id !== l.creator_id);
+    return nonCreator.length > 0 && nonCreator.every((m) => m.status === 'declined');
+  };
+  // Creator is always treated as accepted regardless of stored DB status (covers old rows)
+  const effectiveStatus = (l: SharedList) =>
+    l.creator_id === userId ? 'accepted' : l.members.find((m) => m.user_id === userId)?.status;
+  const pending = sharedLists.filter((l) => effectiveStatus(l) === 'pending');
+  const active = sharedLists.filter((l) => effectiveStatus(l) === 'accepted' && !isAllDeclined(l));
+  const archived = sharedLists.filter((l) => effectiveStatus(l) === 'accepted' && isAllDeclined(l));
+  const declined = sharedLists.filter((l) => effectiveStatus(l) === 'declined');
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Coming-soon screen: sequential stacked fade-in, shown for non-entered users */}
-      {(betaState === 'none' || betaState === 'eligible' || betaState === 'checking') && (
-        <View style={[StyleSheet.absoluteFillObject, styles.comingSoonScreen]}>
+      {/* Coming-soon screen: sequential stacked fade-in, shown for non-entered users + as entrance animation for entered users */}
+      {(betaState === 'none' || betaState === 'eligible' || betaState === 'checking' || betaState === 'entering') && (
+        <Animated.View style={[StyleSheet.absoluteFillObject, styles.comingSoonScreen, { opacity: screenOpacity }]}>
           <Animated.Text style={[styles.teaserLine, { opacity: titleOpacity, transform: [{ translateY: titleY }] }]}>
             Create memories{'\n'}with friends.
           </Animated.Text>
@@ -295,7 +312,7 @@ export default function Friends() {
               </TouchableOpacity>
             </Animated.View>
           )}
-        </View>
+        </Animated.View>
       )}
 
       {/* Full content: only for entered users */}
@@ -317,19 +334,19 @@ export default function Friends() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionLabel}>SHARED LISTS</Text>
               <TouchableOpacity
-                onPress={() => router.push('/friends/new' as any)}
+                onPress={() => { returningFromSubscreen.current = true; router.push('/friends/new' as any); }}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <Text style={styles.newListBtn}>+ new</Text>
               </TouchableOpacity>
             </View>
 
-            {pending.length === 0 && active.length === 0 && declined.length === 0 ? (
+            {pending.length === 0 && active.length === 0 && declined.length === 0 && archived.length === 0 ? (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyHint}>Keep your group chat ideas alive here</Text>
                 <TouchableOpacity
                   style={styles.outlineBtn}
-                  onPress={() => router.push('/friends/new' as any)}
+                  onPress={() => { returningFromSubscreen.current = true; router.push('/friends/new' as any); }}
                 >
                   <Text style={styles.outlineBtnText}>START ONE</Text>
                 </TouchableOpacity>
@@ -337,15 +354,28 @@ export default function Friends() {
             ) : (
               <View style={styles.listGroup}>
                 {pending.map((l) => (
-                  <SharedListRow key={l.id} list={l} userId={userId!} onRespond={() => load(userId!)} />
+                  <SharedListRow key={l.id} list={l} userId={userId!} onRespond={() => load(userId!)} onNavigate={() => { returningFromSubscreen.current = true; }} />
                 ))}
                 {active.map((l) => (
-                  <SharedListRow key={l.id} list={l} userId={userId!} onRespond={() => load(userId!)} />
+                  <SharedListRow key={l.id} list={l} userId={userId!} onRespond={() => load(userId!)} onNavigate={() => { returningFromSubscreen.current = true; }} />
                 ))}
                 {declined.map((l) => (
-                  <SharedListRow key={l.id} list={l} userId={userId!} onRespond={() => load(userId!)} />
+                  <SharedListRow key={l.id} list={l} userId={userId!} onRespond={() => load(userId!)} onNavigate={() => { returningFromSubscreen.current = true; }} />
                 ))}
               </View>
+            )}
+
+            {archived.length > 0 && (
+              <>
+                <Text style={[styles.sectionLabel, { marginTop: 32, marginBottom: 10, paddingHorizontal: 20 }]}>
+                  ARCHIVED
+                </Text>
+                <View style={[styles.listGroup, { opacity: 0.45 }]}>
+                  {archived.map((l) => (
+                    <SharedListRow key={l.id} list={l} userId={userId!} onRespond={() => load(userId!)} onNavigate={() => { returningFromSubscreen.current = true; }} />
+                  ))}
+                </View>
+              </>
             )}
 
             {/* Section B: People You Might Click With */}
@@ -359,9 +389,10 @@ export default function Friends() {
                     <AffinityRow
                       key={p.profile.id}
                       person={p}
-                      onStartList={(profile) =>
-                        router.push({ pathname: '/friends/new', params: { preselect: profile.id, name: profile.display_name ?? '' } } as any)
-                      }
+                      onStartList={(profile) => {
+                        returningFromSubscreen.current = true;
+                        router.push({ pathname: '/friends/new', params: { preselect: profile.id, name: profile.display_name ?? '' } } as any);
+                      }}
                     />
                   ))}
                 </View>

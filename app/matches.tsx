@@ -6,6 +6,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, Stack } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { getMyMatches } from '../lib/matches';
+import { getPendingListInvites } from '../lib/sharedLists';
+import type { ListInvite } from '../lib/sharedLists';
 import { getInterestedUsers } from '../lib/activities';
 import { openInstagram } from '../lib/linking';
 import { markMatchesSeen } from '../lib/matchBadge';
@@ -24,6 +26,7 @@ function timeAgo(dateStr: string) {
 export default function Matches() {
   const router = useRouter();
   const [matches, setMatches] = useState<Match[]>([]);
+  const [invites, setInvites] = useState<ListInvite[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -33,8 +36,12 @@ export default function Matches() {
 
   async function load(uid: string) {
     try {
-      const data = await getMyMatches(uid);
+      const [data, inviteData] = await Promise.all([
+        getMyMatches(uid),
+        getPendingListInvites(uid),
+      ]);
       setMatches(data);
+      setInvites(inviteData);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -112,7 +119,31 @@ export default function Matches() {
             <View style={styles.titleRow}>
               <Text style={styles.pageTitle}>matches activity</Text>
             </View>
-            <Text style={styles.sectionLabel}>
+
+            {invites.length > 0 && (
+              <View>
+                <Text style={styles.sectionLabel}>LIST INVITES</Text>
+                {invites.map((invite) => (
+                  <TouchableOpacity
+                    key={invite.listId}
+                    style={styles.row}
+                    onPress={() => router.push(`/friends/${invite.listId}` as any)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.accent}>✦</Text>
+                    <View style={styles.rowBody}>
+                      <Text style={styles.rowName}>shared list</Text>
+                      <Text style={styles.rowMeta}>
+                        {invite.invitedBy.display_name ?? 'someone'} added you · {timeAgo(invite.createdAt)}
+                      </Text>
+                    </View>
+                    <Text style={styles.chevron}>›</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            <Text style={[styles.sectionLabel, { marginTop: invites.length > 0 ? 20 : 0 }]}>
               {matches.length > 0 ? `${matches.length} connection${matches.length > 1 ? 's' : ''}` : 'connections'}
             </Text>
           </View>

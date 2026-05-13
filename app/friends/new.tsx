@@ -140,8 +140,8 @@ export default function NewSharedList() {
             disabled={creating}
           >
             {creating
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.createBtnText}>CREATE LIST</Text>
+              ? <ActivityIndicator color={colors.accent} />
+              : <Text style={styles.createBtnText}>+ add</Text>
             }
           </TouchableOpacity>
         )}
@@ -231,13 +231,16 @@ const styles = StyleSheet.create({
   resultName: { fontSize: 15, color: colors.text },
 
   createBtn: {
-    backgroundColor: colors.text,
-    paddingVertical: 15,
+    borderWidth: 1,
+    borderColor: colors.accent,
     borderRadius: 24,
+    paddingVertical: 11,
+    paddingHorizontal: 24,
     alignItems: 'center',
+    alignSelf: 'flex-start',
     marginTop: 8,
   },
-  createBtnText: { fontSize: 11, color: '#fff', letterSpacing: 1.5, fontWeight: '500' },
+  createBtnText: { fontSize: 13, color: colors.accent },
 
   errorCard: {
     marginTop: 16,

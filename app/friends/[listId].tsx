@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  ScrollView, ActivityIndicator, RefreshControl, Alert,
+  ScrollView, ActivityIndicator, RefreshControl,
 } from 'react-native';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { getMySharedLists, getListActivities, addActivityToList, removeActivityFromList, respondToInvite } from '../../lib/sharedLists';
-import { getMyActivities } from '../../lib/activities';
+import { getMyActivities, markAsCompleted } from '../../lib/activities';
 import { colors } from '../../lib/colors';
 import type { SharedList, Activity } from '../../lib/types';
 
@@ -61,14 +61,16 @@ export default function SharedListDetail() {
     }
   }
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      const uid = data.session?.user.id ?? null;
-      setUserId(uid);
-      if (uid) load(uid);
-      else setLoading(false);
-    });
-  }, [listId]);
+  useFocusEffect(
+    useCallback(() => {
+      supabase.auth.getSession().then(({ data }) => {
+        const uid = data.session?.user.id ?? null;
+        setUserId(uid);
+        if (uid) load(uid);
+        else setLoading(false);
+      });
+    }, [listId])
+  );
 
   const onRefresh = useCallback(() => {
     if (!userId) return;
@@ -95,16 +97,14 @@ export default function SharedListDetail() {
 
   async function handleRemove(activityId: string) {
     if (!userId) return;
-    Alert.alert('Remove activity', 'Remove this from the shared list?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove', style: 'destructive',
-        onPress: async () => {
-          await removeActivityFromList(listId, activityId);
-          load(userId);
-        },
-      },
-    ]);
+    await removeActivityFromList(listId, activityId);
+    load(userId);
+  }
+
+  async function handleComplete(activityId: string) {
+    if (!userId) return;
+    await markAsCompleted(activityId);
+    load(userId);
   }
 
   function handleBack() {
@@ -187,7 +187,7 @@ export default function SharedListDetail() {
             {list.members
               .filter((m) => m.status !== 'declined')
               .map((m) => (
-                <Avatar key={m.user_id} name={m.profile?.display_name ?? null} size={36} pending={m.status === 'pending'} />
+                <Avatar key={m.user_id} name={m.profile?.display_name ?? null} size={36} pending={m.status === 'pending' && m.user_id !== list.creator_id} />
               ))}
           </View>
           <Text style={styles.listLabel}>{label}</Text>
@@ -200,7 +200,7 @@ export default function SharedListDetail() {
             <View key={m.user_id} style={styles.memberRow}>
               <Avatar name={m.profile?.display_name ?? null} size={30} />
               <Text style={styles.memberName}>{m.profile?.display_name ?? 'someone'}</Text>
-              {m.status !== 'accepted' && (
+              {m.status !== 'accepted' && m.user_id !== list.creator_id && (
                 <View style={[styles.statusPill, m.status === 'declined' && styles.statusPillDeclined]}>
                   <Text style={[styles.statusText, m.status === 'declined' && styles.statusTextDeclined]}>
                     {m.status}
@@ -215,31 +215,50 @@ export default function SharedListDetail() {
         <View style={styles.activitiesHeader}>
           <Text style={styles.sectionLabel}>ACTIVITIES</Text>
           {(myMemberStatus === 'accepted' || list.creator_id === userId) && (
-            <TouchableOpacity onPress={handleShowPicker} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <View style={styles.addBtns}>
               {addingActivity
                 ? <ActivityIndicator size="small" color={colors.accent} />
-                : <Text style={styles.addBtn}>+ add from plans</Text>
+                : (
+                  <>
+                    <TouchableOpacity style={styles.addBtnPill} onPress={() => router.push(`/activity/add?listId=${listId}` as any)}>
+                      <Text style={styles.addBtnPillText}>+ add</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.addBtnPill} onPress={handleShowPicker}>
+                      <Text style={styles.addBtnPillText}>from plans</Text>
+                    </TouchableOpacity>
+                  </>
+                )
               }
-            </TouchableOpacity>
+            </View>
           )}
         </View>
 
         {activities.length === 0 ? (
           <View style={styles.emptyActivities}>
-            <Text style={styles.emptyHint}>No activities yet. Add from your plans.</Text>
+            <Text style={styles.emptyHint}>No activities yet.</Text>
           </View>
-        ) : (
+        ) : activities.length > 0 ? (
           <View style={styles.group}>
             {activities.map((a) => (
-              <View key={a.id} style={styles.activityRow}>
+              <View key={a.id} style={[styles.activityRow, !!a.completed_at && styles.activityRowDone]}>
+                <TouchableOpacity
+                  onPress={a.user_id === userId && !a.completed_at ? () => handleComplete(a.id) : undefined}
+                  style={styles.circle}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  activeOpacity={0.5}
+                >
+                  {a.completed_at
+                    ? <Text style={styles.circleDone}>✓</Text>
+                    : <View style={styles.circleEmpty} />
+                  }
+                </TouchableOpacity>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.activityName}>{a.name}</Text>
+                  <Text style={[styles.activityName, !!a.completed_at && styles.activityNameDone]}>{a.name}</Text>
                   <Text style={styles.activityMeta}>
-                    {a.category.toLowerCase()}
-                    {a.added_by?.display_name ? ` · added by ${a.added_by.display_name}` : ''}
+                    {a.added_by?.display_name ? `added by ${a.added_by.display_name}` : ''}
                   </Text>
                 </View>
-                {a.added_by?.id === userId && (
+                {a.added_by?.id === userId && !a.completed_at && (
                   <TouchableOpacity onPress={() => handleRemove(a.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                     <Text style={styles.removeBtn}>×</Text>
                   </TouchableOpacity>
@@ -247,7 +266,7 @@ export default function SharedListDetail() {
               </View>
             ))}
           </View>
-        )}
+        ) : null}
 
         {/* Activity picker */}
         {showPicker && (
@@ -259,7 +278,7 @@ export default function SharedListDetail() {
               </TouchableOpacity>
             </View>
             {myActivities.length === 0 ? (
-              <Text style={styles.emptyHint}>No activities to add.</Text>
+              <Text style={[styles.emptyHint, styles.pickerEmptyHint]}>No activities to add.</Text>
             ) : (
               myActivities.map((a) => (
                 <TouchableOpacity key={a.id} style={styles.pickerRow} onPress={() => handleAddActivity(a)}>
@@ -332,21 +351,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingRight: 20,
+    paddingBottom: 12,
   },
-  addBtn: { fontSize: 12, color: colors.accent },
+  addBtns: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  addBtnPill: {
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 14,
+  },
+  addBtnPillText: { fontSize: 13, color: colors.accent },
 
   activityRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
-    gap: 12,
   },
+  activityRowDone: { opacity: 0.45 },
+  circle: { width: 28, height: 28, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  circleEmpty: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: colors.subtle },
+  circleDone: { fontSize: 13, color: colors.accent },
   activityName: { fontSize: 15, color: colors.text, marginBottom: 2 },
+  activityNameDone: { textDecorationLine: 'line-through', color: colors.muted },
   activityMeta: { fontSize: 12, color: colors.muted },
-  removeBtn: { fontSize: 18, color: colors.muted, lineHeight: 22 },
+  removeBtn: { fontSize: 18, color: colors.muted, lineHeight: 22, marginLeft: 12 },
 
   emptyActivities: {
     paddingHorizontal: 20,
@@ -356,6 +388,7 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   emptyHint: { fontSize: 13, color: colors.muted, fontStyle: 'italic' },
+  pickerEmptyHint: { paddingHorizontal: 16, paddingVertical: 12 },
 
   picker: {
     marginHorizontal: 20,

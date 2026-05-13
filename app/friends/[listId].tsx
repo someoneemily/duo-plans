@@ -1,14 +1,15 @@
 import { useState, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  ScrollView, ActivityIndicator, RefreshControl,
+  ScrollView, ActivityIndicator, RefreshControl, TextInput,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { getMySharedLists, getListActivities, addActivityToList, removeActivityFromList, respondToInvite } from '../../lib/sharedLists';
+import { getMySharedLists, getListActivities, addActivityToList, removeActivityFromList, respondToInvite, addMemberToList } from '../../lib/sharedLists';
 import { getMyActivities, markAsCompleted } from '../../lib/activities';
+import { searchProfiles } from '../../lib/profiles';
 import { colors } from '../../lib/colors';
-import type { SharedList, Activity } from '../../lib/types';
+import type { SharedList, Activity, Profile } from '../../lib/types';
 
 function Avatar({ name, size = 32, pending = false }: { name: string | null; size?: number; pending?: boolean }) {
   return (
@@ -45,6 +46,11 @@ export default function SharedListDetail() {
   const [addingActivity, setAddingActivity] = useState(false);
   const [myActivities, setMyActivities] = useState<Activity[]>([]);
   const [showPicker, setShowPicker] = useState(false);
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [memberQuery, setMemberQuery] = useState('');
+  const [memberResults, setMemberResults] = useState<Profile[]>([]);
+  const [searchingMembers, setSearchingMembers] = useState(false);
+  const [addingMember, setAddingMember] = useState(false);
 
   async function load(uid: string) {
     try {
@@ -77,6 +83,33 @@ export default function SharedListDetail() {
     setRefreshing(true);
     load(userId);
   }, [userId]);
+
+  async function handleMemberSearch(query: string) {
+    setMemberQuery(query);
+    if (!query.trim() || !userId) { setMemberResults([]); return; }
+    setSearchingMembers(true);
+    try {
+      const existingIds = new Set(list?.members.map((m) => m.user_id) ?? []);
+      const profiles = await searchProfiles(query, userId);
+      setMemberResults(profiles.filter((p) => !existingIds.has(p.id)));
+    } finally {
+      setSearchingMembers(false);
+    }
+  }
+
+  async function handleAddMember(profile: Profile) {
+    if (!userId) return;
+    setAddingMember(true);
+    try {
+      await addMemberToList(listId, profile.id, userId);
+      setShowAddMember(false);
+      setMemberQuery('');
+      setMemberResults([]);
+      await load(userId);
+    } finally {
+      setAddingMember(false);
+    }
+  }
 
   async function handleShowPicker() {
     if (!userId) return;
@@ -189,6 +222,15 @@ export default function SharedListDetail() {
               .map((m) => (
                 <Avatar key={m.user_id} name={m.profile?.display_name ?? null} size={36} pending={m.status === 'pending' && m.user_id !== list.creator_id} />
               ))}
+            {(myMemberStatus === 'accepted' || list.creator_id === userId) && (
+              <TouchableOpacity
+                style={styles.addMemberAvatar}
+                onPress={() => { setShowAddMember((v) => !v); setMemberQuery(''); setMemberResults([]); }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.addMemberIcon}>+</Text>
+              </TouchableOpacity>
+            )}
           </View>
           <Text style={styles.listLabel}>{label}</Text>
         </View>
@@ -210,6 +252,37 @@ export default function SharedListDetail() {
             </View>
           ))}
         </View>
+
+        {/* Add member search panel */}
+        {showAddMember && (
+          <View style={styles.addMemberPanel}>
+            <View style={styles.addMemberSearchRow}>
+              <TextInput
+                style={[styles.addMemberInput, { outline: 'none' } as any]}
+                placeholder="search by name…"
+                placeholderTextColor={colors.subtle}
+                value={memberQuery}
+                onChangeText={handleMemberSearch}
+                autoFocus
+                autoCapitalize="none"
+              />
+              {searchingMembers
+                ? <ActivityIndicator size="small" color={colors.subtle} style={{ marginRight: 12 }} />
+                : addingMember
+                ? <ActivityIndicator size="small" color={colors.accent} style={{ marginRight: 12 }} />
+                : null
+              }
+            </View>
+            {memberResults.map((p) => (
+              <TouchableOpacity key={p.id} style={styles.addMemberResult} onPress={() => handleAddMember(p)}>
+                <View style={[styles.avatar, { width: 28, height: 28, borderRadius: 14 }]}>
+                  <Text style={[styles.avatarText, { fontSize: 11 }]}>{p.display_name?.[0]?.toUpperCase() ?? '?'}</Text>
+                </View>
+                <Text style={styles.addMemberResultName}>{p.display_name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* Activities */}
         <View style={styles.activitiesHeader}>
@@ -421,6 +494,49 @@ const styles = StyleSheet.create({
   },
   pickerName: { fontSize: 14, color: colors.text },
   pickerMeta: { fontSize: 12, color: colors.muted },
+
+  addMemberAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.disabled,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addMemberIcon: { fontSize: 18, color: colors.label, lineHeight: 22, marginTop: -1 },
+
+  addMemberPanel: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: colors.surface,
+  },
+  addMemberSearchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  addMemberInput: {
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    fontSize: 14,
+    color: colors.text,
+  },
+  addMemberResult: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  addMemberResultName: { fontSize: 14, color: colors.text },
 
   avatar: { backgroundColor: colors.tint, justifyContent: 'center', alignItems: 'center' },
   avatarPending: { opacity: 0.5 },

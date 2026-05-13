@@ -156,6 +156,17 @@ export async function createSharedList(
   return list.id;
 }
 
+export async function addMemberToList(
+  listId: string,
+  inviteeId: string,
+  invitedById: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('shared_list_members')
+    .insert({ list_id: listId, user_id: inviteeId, invited_by_id: invitedById, status: 'pending' });
+  if (error) throw new Error(error.message);
+}
+
 export async function respondToInvite(
   listId: string,
   userId: string,

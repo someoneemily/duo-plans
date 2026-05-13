@@ -202,11 +202,18 @@ export default function Friends() {
       setSharedLists(lists);
 
       const myNames = new Set(myActs.filter((a) => !a.completed_at).map((a) => a.name.toLowerCase()));
-      const listUserIds = new Set(lists.flatMap((l) => l.members.map((m) => m.user_id)));
+
+      // Only exclude people who already have a dedicated 1-on-1 list with the current user.
+      // Group lists (3+ members) don't suppress individual affinity suggestions.
+      const oneOnOneUserIds = new Set(
+        lists
+          .filter((l) => l.members.length === 2)
+          .flatMap((l) => l.members.map((m) => m.user_id))
+      );
 
       const byUser: Record<string, { profile: Profile; names: string[] }> = {};
       openActs.forEach((a) => {
-        if (!a.profiles || listUserIds.has(a.user_id)) return;
+        if (!a.profiles || a.user_id === uid || oneOnOneUserIds.has(a.user_id)) return;
         const key = a.user_id;
         if (!byUser[key]) byUser[key] = { profile: a.profiles as unknown as Profile, names: [] };
         if (myNames.has(a.name.toLowerCase())) {

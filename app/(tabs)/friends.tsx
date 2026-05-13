@@ -7,11 +7,11 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { getMyActivities, getOpenActivities } from '../../lib/activities';
-import { getMySharedLists, respondToInvite } from '../../lib/sharedLists';
+import { getMySharedLists, respondToInvite, createSharedList, addActivityToList } from '../../lib/sharedLists';
 import { markInvitesSeen } from '../../lib/inviteBadge';
 import { checkIsFriendsBetaUser, hasFriendsEntered, setFriendsEntered } from '../../lib/friendsBeta';
 import { colors } from '../../lib/colors';
-import type { SharedList, Profile } from '../../lib/types';
+import type { SharedList, Profile, Activity } from '../../lib/types';
 
 type BetaState = 'checking' | 'none' | 'eligible' | 'entering' | 'entered';
 
@@ -19,6 +19,7 @@ type AffinityPerson = {
   profile: Profile;
   mutualCount: number;
   sharedActivityNames: string[];
+  mySharedActivities: Activity[];
 };
 
 function listLabel(list: SharedList, userId: string): string {
@@ -97,7 +98,7 @@ function SharedListRow({ list, userId, onRespond, onNavigate }: {
 
 function AffinityRow({ person, onStartList }: {
   person: AffinityPerson;
-  onStartList: (profile: Profile) => void;
+  onStartList: (person: AffinityPerson) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -125,7 +126,7 @@ function AffinityRow({ person, onStartList }: {
           ))}
           <TouchableOpacity
             style={styles.startListBtn}
-            onPress={() => onStartList(person.profile)}
+            onPress={() => onStartList(person)}
           >
             <Text style={styles.startListText}>
               start a list with {person.profile.display_name ?? 'them'}
@@ -217,11 +218,15 @@ export default function Friends() {
         .filter((u) => u.names.length > 0)
         .sort((a, b) => b.names.length - a.names.length)
         .slice(0, 20)
-        .map((u) => ({
-          profile: u.profile,
-          mutualCount: u.names.length,
-          sharedActivityNames: u.names,
-        }));
+        .map((u) => {
+          const nameSet = new Set(u.names.map((n) => n.toLowerCase()));
+          return {
+            profile: u.profile,
+            mutualCount: u.names.length,
+            sharedActivityNames: u.names,
+            mySharedActivities: myActs.filter((a) => nameSet.has(a.name.toLowerCase()) && !a.completed_at),
+          };
+        });
 
       setAffinityPeople(affinity);
     } finally {
@@ -237,7 +242,10 @@ export default function Friends() {
       // Returning from a friends sub-screen — just reload data, no animation
       if (returningFromSubscreen.current) {
         returningFromSubscreen.current = false;
-        if (userId) load(userId);
+        supabase.auth.getSession().then(({ data }) => {
+          const uid = data.session?.user.id ?? null;
+          if (uid) load(uid);
+        });
         return;
       }
 
@@ -280,6 +288,16 @@ export default function Friends() {
     await setFriendsEntered();
     setBetaState('entered');
     if (userId) load(userId);
+  }
+
+  async function handleStartListWithAffinity(person: AffinityPerson) {
+    if (!userId) return;
+    const listId = await createSharedList(userId, [person.profile.id]);
+    await Promise.all(
+      person.mySharedActivities.map((a) => addActivityToList(listId, a.id, userId))
+    );
+    returningFromSubscreen.current = true;
+    router.push(`/friends/${listId}` as any);
   }
 
   const isAllDeclined = (l: SharedList) => {
@@ -389,10 +407,7 @@ export default function Friends() {
                     <AffinityRow
                       key={p.profile.id}
                       person={p}
-                      onStartList={(profile) => {
-                        returningFromSubscreen.current = true;
-                        router.push({ pathname: '/friends/new', params: { preselect: profile.id, name: profile.display_name ?? '' } } as any);
-                      }}
+                      onStartList={handleStartListWithAffinity}
                     />
                   ))}
                 </View>

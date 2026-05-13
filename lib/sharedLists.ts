@@ -131,7 +131,7 @@ export async function findListWithMembers(
 export async function createSharedList(
   creatorId: string,
   inviteeIds: string[]
-): Promise<void> {
+): Promise<string> {
   const { data: list, error } = await supabase
     .from('shared_lists')
     .insert({ creator_id: creatorId })
@@ -152,6 +152,8 @@ export async function createSharedList(
 
   const { error: memberError } = await supabase.from('shared_list_members').insert(memberRows);
   if (memberError) throw new Error(memberError.message);
+
+  return list.id;
 }
 
 export async function respondToInvite(

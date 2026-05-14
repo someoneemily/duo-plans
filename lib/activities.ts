@@ -77,10 +77,23 @@ export async function addActivity(params: {
   return data;
 }
 
-export async function updateActivity(activityId: string, updates: { name: string }): Promise<void> {
+export async function updateActivity(activityId: string, updates: {
+  name: string;
+  category: Category;
+  notes?: string;
+  dates?: string[];
+  isOpen?: boolean;
+}): Promise<void> {
   const { error } = await supabase
     .from('activities')
-    .update({ name: updates.name })
+    .update({
+      name: updates.name,
+      category: updates.category,
+      notes: updates.notes ?? null,
+      dates: updates.dates && updates.dates.length > 0 ? updates.dates : null,
+      is_open: updates.isOpen ?? false,
+      is_private: !(updates.isOpen ?? false),
+    })
     .eq('id', activityId);
 
   if (error) throw error;

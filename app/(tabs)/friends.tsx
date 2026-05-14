@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View, Text, Animated, StyleSheet, SafeAreaView,
-  ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl,
+  ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
@@ -40,6 +40,73 @@ function Avatar({ name, size = 34 }: { name: string | null; size?: number }) {
   );
 }
 
+// Stacked rounded-square cards icon for shared list rows, up to 3 cards
+function ListStackIcon({ members }: { members: { name: string | null }[] }) {
+  const n = Math.min(members.length, 3);
+  const CARD = 34;
+  const RADIUS = 8;
+
+  const shadow = Platform.OS !== 'web'
+    ? { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 3 }
+    : {};
+  const gradient = (opacity: number) =>
+    Platform.OS === 'web'
+      ? { background: `linear-gradient(145deg, rgba(245,238,255,${opacity}) 0%, rgba(185,130,215,${opacity}) 100%)` } as any
+      : { backgroundColor: `rgba(185,130,215,${opacity})` };
+
+  // front card is center/upright; side cards fan out ±30deg behind
+  type Layer = { rotate: string; tx: number; ty: number; opacity: number; memberIdx: number };
+  const layouts: Layer[] =
+    n === 1
+      ? [{ rotate: '0deg',   tx: 12, ty: 2, opacity: 1.0, memberIdx: 0 }]
+      : n === 2
+      ? [
+          { rotate: '-15deg', tx: 0,  ty: 6, opacity: 0.65, memberIdx: 1 },
+          { rotate: '0deg',   tx: 24, ty: 2, opacity: 1.0,  memberIdx: 0 },
+        ]
+      : [
+          { rotate: '-15deg', tx: 0,  ty: 6,  opacity: 0.60, memberIdx: 1 },
+          { rotate: '15deg',  tx: 48, ty: -7, opacity: 0.60, memberIdx: 2 },
+          { rotate: '0deg',   tx: 24, ty: 0, opacity: 1.0,  memberIdx: 0 },
+        ];
+
+  const containerW = n === 1 ? 50 : n === 2 ? 74 : 98;
+  const containerH = CARD + 8;
+  const cardTop = Math.floor((containerH - CARD) / 2);
+
+  return (
+    <View style={{ width: containerW, height: containerH }}>
+      {layouts.map((l, i) => {
+        const initial = members[l.memberIdx]?.name?.[0]?.toUpperCase() ?? '?';
+        return (
+          <View
+            key={i}
+            style={[
+              {
+                position: 'absolute',
+                width: CARD,
+                height: CARD,
+                borderRadius: RADIUS,
+                top: cardTop,
+                left: 0,
+                transform: [{ rotate: l.rotate }, { translateX: l.tx }, { translateY: l.ty }],
+                justifyContent: 'center',
+                alignItems: 'center',
+              },
+              gradient(l.opacity),
+              shadow,
+            ]}
+          >
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.82)', fontWeight: '600' }}>
+              {initial}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 function SharedListRow({ list, userId, onRespond, onNavigate }: {
   list: SharedList;
   userId: string;
@@ -73,11 +140,9 @@ function SharedListRow({ list, userId, onRespond, onNavigate }: {
       onPress={canNavigate ? () => { onNavigate(); router.push(`/friends/${list.id}` as any); } : undefined}
       activeOpacity={canNavigate ? 0.7 : 1}
     >
-      <View style={styles.rowAvatars}>
-        {others.slice(0, 3).map((m) => (
-          <Avatar key={m.user_id} name={m.profile?.display_name ?? null} size={32} />
-        ))}
-      </View>
+      <ListStackIcon members={list.members
+          .sort((a, b) => (a.user_id === userId ? -1 : b.user_id === userId ? 1 : 0))
+          .map((m) => ({ name: m.profile?.display_name ?? null }))} />
       <View style={styles.rowBody}>
         <Text style={[styles.rowName, isDeclined && { color: colors.muted }]}>{label}</Text>
       </View>
@@ -489,7 +554,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   rowDeclined: { opacity: 0.45 },
-  rowAvatars: { flexDirection: 'row', gap: -8 },
   rowBody: { flex: 1 },
   rowName: { fontSize: 15, color: colors.text, marginBottom: 2 },
   rowMeta: { fontSize: 12, color: colors.muted },

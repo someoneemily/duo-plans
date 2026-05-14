@@ -18,6 +18,7 @@ export interface Activity {
   notes: string | null;
   is_open: boolean;
   is_private: boolean;
+  is_list_only: boolean;
   google_place_id: string | null;
   source: 'self' | 'explore';
   completed_at: string | null;

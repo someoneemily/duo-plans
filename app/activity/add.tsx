@@ -7,7 +7,7 @@ import {
 import { useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { addActivity } from '../../lib/activities';
+import { addActivity, updateActivity } from '../../lib/activities';
 import { addActivityToList } from '../../lib/sharedLists';
 import { validateActivityName } from '../../lib/validate';
 import type { Category } from '../../lib/types';
@@ -24,13 +24,37 @@ function formatDate(dateStr: string): string {
 
 export default function AddActivity() {
   const router = useRouter();
-  const { listId } = useLocalSearchParams<{ listId?: string }>();
-  const isListAdd = !!listId;
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState<Category | ''>('');
-  const [notes, setNotes] = useState('');
-  const [isOpen, setIsOpen] = useState(!isListAdd);
-  const [dates, setDates] = useState<string[]>([]);
+  const {
+    listId,
+    activityId,
+    prefillName,
+    prefillCategory,
+    prefillNotes,
+    prefillDates,
+    prefillIsOpen,
+    prefillIsListOnly,
+  } = useLocalSearchParams<{
+    listId?: string;
+    activityId?: string;
+    prefillName?: string;
+    prefillCategory?: string;
+    prefillNotes?: string;
+    prefillDates?: string;
+    prefillIsOpen?: string;
+    prefillIsListOnly?: string;
+  }>();
+  const isEditMode = !!activityId;
+  const isListAdd = !isEditMode && !!listId;
+  const isListOnly = prefillIsListOnly === 'true';
+  const [name, setName] = useState(prefillName ?? '');
+  const [category, setCategory] = useState<Category | ''>((prefillCategory as Category) ?? '');
+  const [notes, setNotes] = useState(prefillNotes ?? '');
+  const [isOpen, setIsOpen] = useState(
+    isEditMode ? prefillIsOpen === 'true' : !isListAdd
+  );
+  const [dates, setDates] = useState<string[]>(
+    prefillDates ? prefillDates.split(',').filter(Boolean) : []
+  );
   const [saving, setSaving] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null);
@@ -60,17 +84,27 @@ export default function AddActivity() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not signed in');
-      const activity = await addActivity({
-        userId: session.user.id,
-        name: name.trim(),
-        category: category as Category,
-        notes: notes.trim() || undefined,
-        isOpen: isListAdd ? false : isOpen,
-        isListOnly: isListAdd,
-        dates: dates.length > 0 ? dates : undefined,
-      });
-      if (isListAdd && listId) {
-        await addActivityToList(listId, activity.id, session.user.id);
+      if (isEditMode && activityId) {
+        await updateActivity(activityId, {
+          name: name.trim(),
+          category: category as Category,
+          notes: notes.trim() || undefined,
+          dates: dates.length > 0 ? dates : undefined,
+          isOpen: isListOnly ? false : isOpen,
+        });
+      } else {
+        const activity = await addActivity({
+          userId: session.user.id,
+          name: name.trim(),
+          category: category as Category,
+          notes: notes.trim() || undefined,
+          isOpen: isListAdd ? false : isOpen,
+          isListOnly: isListAdd,
+          dates: dates.length > 0 ? dates : undefined,
+        });
+        if (isListAdd && listId) {
+          await addActivityToList(listId, activity.id, session.user.id);
+        }
       }
       router.back();
     } catch (err: any) {
@@ -85,7 +119,7 @@ export default function AddActivity() {
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
-          <Text style={styles.pageTitle}>{isListAdd ? 'add to list' : 'add plan'}</Text>
+          <Text style={styles.pageTitle}>{isEditMode ? 'edit plan' : isListAdd ? 'add to list' : 'add plan'}</Text>
 
           <TextInput
             style={[styles.nameInput, { outline: 'none' } as any, nameError ? styles.inputError : null]}
@@ -175,7 +209,7 @@ export default function AddActivity() {
             )
           }
 
-          {!isListAdd && (
+          {!isListAdd && !isListOnly && (
             <TouchableOpacity style={styles.openRow} onPress={() => setIsOpen(!isOpen)}>
               <View>
                 <Text style={styles.openLabel}>open to doing with someone</Text>

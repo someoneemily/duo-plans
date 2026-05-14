@@ -1,190 +1,18 @@
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  SafeAreaView, ActivityIndicator, ScrollView, TextInput, RefreshControl,
-  Platform, Share,
+  SafeAreaView, ActivityIndicator, ScrollView, RefreshControl,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { getMyActivities, addActivity, toggleOpen, deleteActivity, markAsCompleted, updateActivity, getInterestedUsers } from '../../lib/activities';
-import { validateActivityName } from '../../lib/validate';
+import { getMyActivities, addActivity, toggleOpen, deleteActivity, markAsCompleted } from '../../lib/activities';
 import CompletionCelebration from '../../components/CompletionCelebration';
-import LinkText from '../../components/LinkText';
 import MatchBell from '../../components/MatchBell';
+import { ActivityRow } from '../../components/ActivityRow';
 import { colors } from '../../lib/colors';
-import type { Activity, Category, Profile } from '../../lib/types';
+import type { Activity, Category } from '../../lib/types';
 
-function formatPlanDates(dates: string[]): string {
-  const today = new Date().toISOString().split('T')[0];
-  const upcoming = dates.filter((d) => d >= today).sort();
-  const targets = upcoming.length > 0 ? upcoming : dates.sort();
-  return targets
-    .slice(0, 2)
-    .map((d) => {
-      const [year, month, day] = d.split('-').map(Number);
-      return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    })
-    .join(', ') + (targets.length > 2 ? ' …' : '');
-}
-
-function PlanRow({
-  item,
-  onToggleOpen,
-  onComplete,
-  onDelete,
-  onUpdate,
-}: {
-  item: Activity;
-  onToggleOpen: () => void;
-  onComplete: () => void;
-  onDelete: () => void;
-  onUpdate: (name: string) => void;
-}) {
-  const isDone = !!item.completed_at;
-  const canEdit = item.source === 'self' && !isDone;
-  const [editingName, setEditingName] = useState(false);
-  const [draftName, setDraftName] = useState(item.name);
-  const [shared, setShared] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [interested, setInterested] = useState<Profile[]>([]);
-  const [loadingInterested, setLoadingInterested] = useState(false);
-  const inputRef = useRef<TextInput>(null);
-
-  async function toggleExpand() {
-    const next = !expanded;
-    setExpanded(next);
-    if (next && item.is_open && !isDone && interested.length === 0) {
-      setLoadingInterested(true);
-      try {
-        const users = await getInterestedUsers(item.name);
-        setInterested(users);
-      } finally {
-        setLoadingInterested(false);
-      }
-    }
-  }
-
-  function handleNamePress() {
-    if (!canEdit) return;
-    if (!expanded) { toggleExpand(); return; }
-    setDraftName(item.name);
-    setEditingName(true);
-    setTimeout(() => inputRef.current?.focus(), 50);
-  }
-
-  function handleNameBlur() {
-    setEditingName(false);
-    const trimmed = draftName.trim();
-    if (trimmed && trimmed !== item.name && !validateActivityName(trimmed)) {
-      onUpdate(trimmed);
-    } else {
-      setDraftName(item.name);
-    }
-  }
-
-  async function handleShare() {
-    const url = Platform.OS === 'web'
-      ? `${(window as any).location.origin}/activity/${item.id}`
-      : `https://duo-plans.vercel.app/activity/${item.id}`;
-    if (Platform.OS !== 'web') {
-      await Share.share({ url, message: url });
-    } else if (typeof (navigator as any).share === 'function') {
-      try { await (navigator as any).share({ title: item.name, url }); } catch { /* cancelled */ }
-    } else {
-      try { await (navigator as any).clipboard.writeText(url); } catch { /* silent */ }
-      setShared(true);
-      setTimeout(() => setShared(false), 1500);
-    }
-  }
-
-  return (
-    <View>
-      <TouchableOpacity style={[styles.row, isDone && styles.rowDone]} onPress={toggleExpand} activeOpacity={0.7}>
-        <TouchableOpacity
-          onPress={isDone ? undefined : onComplete}
-          style={styles.circle}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          activeOpacity={0.5}
-        >
-          {isDone
-            ? <Text style={styles.circleDone}>✓</Text>
-            : <View style={styles.circleEmpty} />
-          }
-        </TouchableOpacity>
-
-        <View style={styles.rowCenter}>
-          {editingName ? (
-            <TextInput
-              ref={inputRef}
-              style={[styles.planName, styles.nameInput, { outline: 'none', fontSize: 16 } as any]}
-              value={draftName}
-              onChangeText={setDraftName}
-              onBlur={handleNameBlur}
-              onSubmitEditing={handleNameBlur}
-              returnKeyType="done"
-              selectTextOnFocus
-            />
-          ) : (
-            <TouchableOpacity onPress={handleNamePress} activeOpacity={canEdit ? 0.6 : 1} disabled={!canEdit}>
-              <Text style={[styles.planName, isDone && styles.planNameDone]}>{item.name}</Text>
-            </TouchableOpacity>
-          )}
-          <Text style={styles.planMeta}>
-            {item.category.toLowerCase()}
-            {item.dates && item.dates.length > 0 ? ` · ${formatPlanDates(item.dates)}` : ''}
-          </Text>
-        </View>
-
-        {!isDone && (
-          <View style={styles.right}>
-            {item.source !== 'explore' && (
-              <TouchableOpacity
-                onPress={onToggleOpen}
-                style={[styles.duoChip, item.is_open && styles.duoChipOn]}
-              >
-                <Text style={[styles.duoChipText, item.is_open && styles.duoChipTextOn]}>
-                  {item.is_open ? 'open' : 'solo'}
-                </Text>
-              </TouchableOpacity>
-            )}
-            {item.source !== 'explore' && (
-              <TouchableOpacity onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="share-outline" size={16} color={shared ? colors.accent : colors.subtle} />
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-      </TouchableOpacity>
-
-      {expanded && (
-        <View style={styles.expandedSection}>
-          {item.notes ? <LinkText style={styles.expandedNotes}>{item.notes}</LinkText> : null}
-
-          {item.is_open && !isDone && (
-            loadingInterested ? (
-              <ActivityIndicator color="#ccc" size="small" />
-            ) : interested.length > 0 ? (
-              <View style={{ gap: 6 }}>
-                <Text style={styles.expandedLabel}>interested · {interested.length}</Text>
-                {interested.map((p) => (
-                  <Text key={p.id} style={styles.expandedPerson}>{p.display_name ?? 'someone'}</Text>
-                ))}
-              </View>
-            ) : (
-              <Text style={styles.expandedEmpty}>no one else interested yet</Text>
-            )
-          )}
-
-          <TouchableOpacity onPress={onDelete} style={styles.expandedDelete}>
-            <Text style={styles.expandedDeleteText}>remove from plans</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-  );
-}
 
 export default function MyPlans() {
   const router = useRouter();
@@ -195,6 +23,7 @@ export default function MyPlans() {
   const [celebrating, setCelebrating] = useState<Activity | null>(null);
   const [suggestions, setSuggestions] = useState<{ name: string; category: Category }[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [planFilter, setPlanFilter] = useState<'all' | 'created' | 'explore'>('all');
   const [refreshCount, setRefreshCount] = useState(0);
   const hasFetchedSuggestions = useRef(false);
 
@@ -250,15 +79,6 @@ export default function MyPlans() {
   async function handleDelete(item: Activity) {
     setActivities((prev) => prev.filter((a) => a.id !== item.id));
     await deleteActivity(item.id);
-  }
-
-  async function handleUpdate(item: Activity, name: string) {
-    setActivities((prev) => prev.map((a) => a.id === item.id ? { ...a, name } : a));
-    try {
-      await updateActivity(item.id, { name });
-    } catch {
-      setActivities((prev) => prev.map((a) => a.id === item.id ? { ...a, name: item.name } : a));
-    }
   }
 
   async function fetchSuggestions() {
@@ -368,59 +188,72 @@ export default function MyPlans() {
           ) : null}
         </View>
 
-        {/* Created */}
-        <Text style={styles.sectionLabel}>created</Text>
-        {created.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <TouchableOpacity style={styles.plusBox} onPress={() => router.push('/activity/add')}>
-              <Text style={styles.plusText}>+</Text>
-            </TouchableOpacity>
-            <Text style={styles.emptyHint}>Nothing added yet.</Text>
-            <TouchableOpacity style={styles.outlineBtn} onPress={() => router.push('/activity/add')}>
-              <Text style={styles.outlineBtnText}>ADD A PLAN</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.planList}>
+        {/* Plans — consolidated with filter */}
+        <View style={styles.filterRow}>
+          {(['all', 'created', 'explore'] as const).map((f) => (
             <TouchableOpacity
-              style={[styles.outlineBtn, { alignSelf: 'flex-start', margin: 16 }]}
-              onPress={() => router.push('/activity/add')}
+              key={f}
+              style={[styles.filterPill, planFilter === f && styles.filterPillActive]}
+              onPress={() => setPlanFilter(f)}
             >
-              <Text style={styles.outlineBtnText}>+ ADD</Text>
+              <Text style={[styles.filterPillText, planFilter === f && styles.filterPillTextActive]}>
+                {f === 'all' ? 'all' : f === 'created' ? 'created by me' : 'saved from explore'}
+              </Text>
             </TouchableOpacity>
-            {created.map((item) => (
-              <PlanRow
-                key={item.id}
-                item={item}
-                onToggleOpen={() => handleToggleOpen(item)}
-                onComplete={() => handleComplete(item)}
-                onDelete={() => handleDelete(item)}
-                onUpdate={(name) => handleUpdate(item, name)}
-              />
-            ))}
-          </View>
-        )}
+          ))}
+        </View>
 
-        {/* Saved from explore */}
-        <Text style={[styles.sectionLabel, { marginTop: 36 }]}>saved from explore</Text>
-        {fromExplore.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyHint}>Heart something in Explore to save it here.</Text>
-          </View>
-        ) : (
-          <View style={styles.planList}>
-            {fromExplore.map((item) => (
-              <PlanRow
-                key={item.id}
-                item={item}
-                onToggleOpen={() => handleToggleOpen(item)}
-                onComplete={() => handleComplete(item)}
-                onDelete={() => handleDelete(item)}
-                onUpdate={(name) => handleUpdate(item, name)}
-              />
-            ))}
-          </View>
-        )}
+        {(() => {
+          const visible = planFilter === 'all'
+            ? [...created, ...fromExplore]
+            : planFilter === 'created' ? created : fromExplore;
+          const isEmpty = visible.length === 0;
+
+          if (isEmpty) {
+            return (
+              <View style={styles.emptyCard}>
+                {planFilter !== 'explore' && (
+                  <TouchableOpacity style={styles.plusBox} onPress={() => router.push('/activity/add')}>
+                    <Text style={styles.plusText}>+</Text>
+                  </TouchableOpacity>
+                )}
+                <Text style={styles.emptyHint}>
+                  {planFilter === 'explore'
+                    ? 'Heart something in Explore to save it here.'
+                    : 'Nothing added yet.'}
+                </Text>
+                {planFilter !== 'explore' && (
+                  <TouchableOpacity style={styles.outlineBtn} onPress={() => router.push('/activity/add')}>
+                    <Text style={styles.outlineBtnText}>ADD A PLAN</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          }
+
+          return (
+            <View style={styles.planList}>
+              {planFilter !== 'explore' && (
+                <TouchableOpacity
+                  style={[styles.outlineBtn, { alignSelf: 'flex-start', margin: 16 }]}
+                  onPress={() => router.push('/activity/add')}
+                >
+                  <Text style={styles.outlineBtnText}>+ ADD</Text>
+                </TouchableOpacity>
+              )}
+              {visible.map((item) => (
+                <ActivityRow
+                  key={item.id}
+                  item={item}
+                  userId={userId!}
+                  onToggleOpen={() => handleToggleOpen(item)}
+                  onComplete={() => handleComplete(item)}
+                  onDelete={() => handleDelete(item)}
+                />
+              ))}
+            </View>
+          );
+        })()}
 
         {/* Completed */}
         {done.length > 0 && (
@@ -428,13 +261,11 @@ export default function MyPlans() {
             <Text style={[styles.sectionLabel, { marginTop: 36 }]}>completed · {done.length}</Text>
             <View style={styles.planList}>
               {done.map((item) => (
-                <PlanRow
+                <ActivityRow
                   key={item.id}
                   item={item}
-                  onToggleOpen={() => {}}
-                  onComplete={() => {}}
+                  userId={userId!}
                   onDelete={() => handleDelete(item)}
-                  onUpdate={() => {}}
                 />
               ))}
             </View>
@@ -496,57 +327,30 @@ const styles = StyleSheet.create({
   planList: {
     marginHorizontal: 20, borderWidth: 1, borderColor: '#ececec', borderRadius: 10,
   },
-  row: {
+  filterRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#f0f0f0',
+    gap: 8,
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
-  rowDone: { opacity: 0.45 },
-  circle: { width: 28, height: 28, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  circleEmpty: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: colors.subtle },
-  circleDone: { fontSize: 13, color: colors.accent },
-  planName: { fontSize: 15, color: '#111' },
-  nameInput: { padding: 0, margin: 0 },
-  planNameDone: { textDecorationLine: 'line-through', color: colors.muted },
-  planMeta: { fontSize: 12, color: colors.muted, marginTop: 2 },
-  right: { flexDirection: 'row', alignItems: 'center', gap: 14, marginLeft: 8 },
-  duoChip: {
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+  filterPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: colors.border,
   },
-  duoChipOn: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
+  filterPillActive: {
+    backgroundColor: '#111',
+    borderColor: '#111',
   },
-  duoChipText: {
-    fontSize: 10,
+  filterPillText: {
+    fontSize: 12,
     color: colors.muted,
-    letterSpacing: 0.5,
   },
-  duoChipTextOn: {
+  filterPillTextActive: {
     color: '#fff',
   },
-  expandedSection: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
-    backgroundColor: '#fafafa',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#f0f0f0',
-    gap: 10,
-  },
-  expandedNotes: { fontSize: 13, color: colors.secondary, lineHeight: 19 },
-  expandedLabel: { fontSize: 11, color: colors.muted, letterSpacing: 0.5 },
-  expandedPerson: { fontSize: 14, color: '#111' },
-  expandedEmpty: { fontSize: 13, color: colors.muted, fontStyle: 'italic' },
-  expandedDelete: { paddingTop: 4 },
-  expandedDeleteText: { fontSize: 13, color: colors.subtle },
   suggestionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -573,4 +377,7 @@ const styles = StyleSheet.create({
   suggestionAddText: { fontSize: 11, color: colors.accent, letterSpacing: 0.5 },
   suggestionDismiss: { fontSize: 18, color: colors.subtle, lineHeight: 20 },
   refreshIconDisabled: { color: colors.disabled },
+  planName: { fontSize: 15, color: '#111' },
+  planMeta: { fontSize: 12, color: colors.muted, marginTop: 2 },
+  right: { flexDirection: 'row', alignItems: 'center', gap: 14, marginLeft: 8 },
 });

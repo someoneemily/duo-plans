@@ -8,8 +8,10 @@ import { supabase } from '../../lib/supabase';
 import { getMySharedLists, getListActivities, addActivityToList, removeActivityFromList, respondToInvite, addMemberToList } from '../../lib/sharedLists';
 import { getMyActivities, markAsCompleted } from '../../lib/activities';
 import { searchProfiles } from '../../lib/profiles';
+import { ActivityRow } from '../../components/ActivityRow';
 import { colors } from '../../lib/colors';
 import type { SharedList, Activity, Profile } from '../../lib/types';
+
 
 function Avatar({ name, size = 32, pending = false }: { name: string | null; size?: number; pending?: boolean }) {
   return (
@@ -310,36 +312,22 @@ export default function SharedListDetail() {
           <View style={styles.emptyActivities}>
             <Text style={styles.emptyHint}>No activities yet.</Text>
           </View>
-        ) : activities.length > 0 ? (
+        ) : (
           <View style={styles.group}>
             {activities.map((a) => (
-              <View key={a.id} style={[styles.activityRow, !!a.completed_at && styles.activityRowDone]}>
-                <TouchableOpacity
-                  onPress={a.user_id === userId && !a.completed_at ? () => handleComplete(a.id) : undefined}
-                  style={styles.circle}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  activeOpacity={0.5}
-                >
-                  {a.completed_at
-                    ? <Text style={styles.circleDone}>✓</Text>
-                    : <View style={styles.circleEmpty} />
-                  }
-                </TouchableOpacity>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.activityName, !!a.completed_at && styles.activityNameDone]}>{a.name}</Text>
-                  <Text style={styles.activityMeta}>
-                    {a.added_by?.display_name ? `added by ${a.added_by.display_name}` : ''}
-                  </Text>
-                </View>
-                {a.added_by?.id === userId && !a.completed_at && (
-                  <TouchableOpacity onPress={() => handleRemove(a.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Text style={styles.removeBtn}>×</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+              <ActivityRow
+                key={a.id}
+                item={a}
+                userId={userId!}
+                onComplete={a.user_id === userId && !a.completed_at ? () => handleComplete(a.id) : undefined}
+                onDelete={!a.completed_at && (a.user_id === userId || a.added_by?.id === userId)
+                  ? () => handleRemove(a.id)
+                  : undefined}
+                addedBy={a.added_by}
+              />
             ))}
           </View>
-        ) : null}
+        )}
 
         {/* Activity picker */}
         {showPicker && (
@@ -436,22 +424,6 @@ const styles = StyleSheet.create({
   },
   addBtnPillText: { fontSize: 13, color: colors.accent },
 
-  activityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  activityRowDone: { opacity: 0.45 },
-  circle: { width: 28, height: 28, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  circleEmpty: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: colors.subtle },
-  circleDone: { fontSize: 13, color: colors.accent },
-  activityName: { fontSize: 15, color: colors.text, marginBottom: 2 },
-  activityNameDone: { textDecorationLine: 'line-through', color: colors.muted },
-  activityMeta: { fontSize: 12, color: colors.muted },
-  removeBtn: { fontSize: 18, color: colors.muted, lineHeight: 22, marginLeft: 12 },
 
   emptyActivities: {
     paddingHorizontal: 20,

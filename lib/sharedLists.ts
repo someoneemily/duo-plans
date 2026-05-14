@@ -188,7 +188,7 @@ export async function getListActivities(listId: string): Promise<(Activity & { a
       added_by_id,
       created_at,
       activities (
-        id, user_id, name, category, notes, is_open, is_private,
+        id, user_id, name, category, notes, is_open, is_private, is_list_only,
         source, completed_at, created_at, dates, google_place_id
       ),
       profiles!added_by_id (id, display_name, avatar_url, instagram_handle, phone_number, username, created_at)

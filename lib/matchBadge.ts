@@ -33,3 +33,24 @@ export async function markMatchesSeen(): Promise<void> {
   _count = 0;
   emit();
 }
+
+let _channel: ReturnType<typeof supabase.channel> | null = null;
+
+export function startMatchRealtimeListener(userId: string): () => void {
+  _channel?.unsubscribe();
+  _channel = supabase
+    .channel(`match-badge-${userId}`)
+    .on('postgres_changes' as any, {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'matches',
+      filter: `user2_id=eq.${userId}`,
+    }, () => {
+      refreshMatchBadge(userId);
+    })
+    .subscribe();
+  return () => {
+    _channel?.unsubscribe();
+    _channel = null;
+  };
+}

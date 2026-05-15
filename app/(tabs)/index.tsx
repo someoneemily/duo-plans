@@ -166,7 +166,6 @@ export default function MyPlans() {
                 <View key={s.name} style={styles.suggestionRow}>
                   <View style={styles.rowCenter}>
                     <Text style={styles.planName}>{s.name}</Text>
-                    <Text style={styles.planMeta}>{s.category.toLowerCase()}</Text>
                   </View>
                   <View style={styles.right}>
                     <TouchableOpacity
@@ -232,26 +231,25 @@ export default function MyPlans() {
           }
 
           return (
-            <View style={styles.planList}>
+            <>
               {planFilter !== 'explore' && (
-                <TouchableOpacity
-                  style={[styles.outlineBtn, { alignSelf: 'flex-start', margin: 16 }]}
-                  onPress={() => router.push('/activity/add')}
-                >
-                  <Text style={styles.outlineBtnText}>+ ADD</Text>
+                <TouchableOpacity style={styles.addRow} onPress={() => router.push('/activity/add')}>
+                  <Text style={styles.addRowText}>+ new plan</Text>
                 </TouchableOpacity>
               )}
-              {visible.map((item) => (
-                <ActivityRow
-                  key={item.id}
-                  item={item}
-                  userId={userId!}
-                  onToggleOpen={() => handleToggleOpen(item)}
-                  onComplete={() => handleComplete(item)}
-                  onDelete={() => handleDelete(item)}
-                />
-              ))}
-            </View>
+              <View style={styles.planList}>
+                {visible.map((item) => (
+                  <ActivityRow
+                    key={item.id}
+                    item={item}
+                    userId={userId!}
+                    onToggleOpen={() => handleToggleOpen(item)}
+                    onComplete={() => handleComplete(item)}
+                    onDelete={() => handleDelete(item)}
+                  />
+                ))}
+              </View>
+            </>
           );
         })()}
 
@@ -324,6 +322,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20,
   },
   outlineBtnText: { fontSize: 11, color: '#111', letterSpacing: 1.2, fontWeight: '500' },
+  addRow: {
+    marginHorizontal: 20,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#ececec',
+  },
+  addRowText: {
+    fontSize: 14,
+    color: colors.accent,
+    letterSpacing: 0.2,
+  },
   planList: {
     marginHorizontal: 20, borderWidth: 1, borderColor: '#ececec', borderRadius: 10,
   },
@@ -378,6 +389,6 @@ const styles = StyleSheet.create({
   suggestionDismiss: { fontSize: 18, color: colors.subtle, lineHeight: 20 },
   refreshIconDisabled: { color: colors.disabled },
   planName: { fontSize: 15, color: '#111' },
-  planMeta: { fontSize: 12, color: colors.muted, marginTop: 2 },
+
   right: { flexDirection: 'row', alignItems: 'center', gap: 14, marginLeft: 8 },
 });

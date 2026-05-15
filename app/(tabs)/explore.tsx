@@ -9,6 +9,7 @@ import { addActivity, getMyActivities, getOpenActivities, getOpenActivitiesPubli
 import { openInstagram } from '../../lib/linking';
 import LinkText from '../../components/LinkText';
 import MatchBell from '../../components/MatchBell';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../lib/colors';
 import type { Activity, Category, Profile } from '../../lib/types';
 
@@ -340,6 +341,14 @@ export default function Explore() {
                     {item.nextDate ? ` · ${formatDate(item.nextDate)}` : ''}
                   </Text>
                 </View>
+                {hearted && (
+                  <Ionicons
+                    name={expanded ? 'chevron-up' : 'chevron-down'}
+                    size={13}
+                    color={colors.muted}
+                    style={{ marginRight: 6 }}
+                  />
+                )}
                 {!item.isOwn && (
                   <TouchableOpacity
                     style={styles.heartBtn}
@@ -375,7 +384,7 @@ export default function Explore() {
                     </Text>
                   ) : (
                     <>
-                      <Text style={styles.interestedLabel}>interested · {interested.length}</Text>
+                      <Text style={styles.interestedLabel}>reach out · {interested.length}</Text>
                       {interested.map((profile) => (
                         <View key={profile.id} style={styles.personRow}>
                           <Text style={styles.personName}>{profile.display_name ?? 'someone'}</Text>

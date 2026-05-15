@@ -3,8 +3,8 @@ import { StyleSheet, AppState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { refreshMatchBadge } from '../../lib/matchBadge';
-import { refreshInviteBadge, subscribeInviteBadge } from '../../lib/inviteBadge';
+import { refreshMatchBadge, startMatchRealtimeListener } from '../../lib/matchBadge';
+import { refreshInviteBadge, subscribeInviteBadge, startInviteRealtimeListener } from '../../lib/inviteBadge';
 import { colors } from '../../lib/colors';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
@@ -37,6 +37,8 @@ export default function TabsLayout() {
       if (uid) {
         refreshMatchBadge(uid);
         refreshInviteBadge(uid);
+        startMatchRealtimeListener(uid);
+        startInviteRealtimeListener(uid);
       }
     });
 

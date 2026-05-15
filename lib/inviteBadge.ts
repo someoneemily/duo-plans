@@ -35,3 +35,24 @@ export async function markInvitesSeen(): Promise<void> {
   _count = 0;
   emit();
 }
+
+let _channel: ReturnType<typeof supabase.channel> | null = null;
+
+export function startInviteRealtimeListener(userId: string): () => void {
+  _channel?.unsubscribe();
+  _channel = supabase
+    .channel(`invite-badge-${userId}`)
+    .on('postgres_changes' as any, {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'shared_list_members',
+      filter: `user_id=eq.${userId}`,
+    }, () => {
+      refreshInviteBadge(userId);
+    })
+    .subscribe();
+  return () => {
+    _channel?.unsubscribe();
+    _channel = null;
+  };
+}

@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { signUpWithEmail } from '../../lib/auth';
+import { signUpWithEmail, signInWithGoogle } from '../../lib/auth';
 import { colors } from '../../lib/colors';
 
 export default function SignUp() {
@@ -80,6 +80,16 @@ export default function SignUp() {
               <Text style={styles.buttonText}>CREATE ACCOUNT</Text>
             )}
           </TouchableOpacity>
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity style={styles.googleButton} onPress={() => signInWithGoogle()}>
+            <Text style={styles.googleButtonText}>Continue with Google</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     </KeyboardAvoidingView>
@@ -123,4 +133,12 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { borderColor: '#e0e0e0' },
   buttonText: { fontSize: 11, color: '#111', letterSpacing: 1.5, fontWeight: '500' },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 24, marginBottom: 16 },
+  dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: '#e0e0e0' },
+  dividerText: { fontSize: 12, color: colors.muted },
+  googleButton: {
+    borderWidth: 1, borderColor: '#e0e0e0',
+    paddingVertical: 14, alignItems: 'center', borderRadius: 24,
+  },
+  googleButtonText: { fontSize: 13, color: '#111' },
 });

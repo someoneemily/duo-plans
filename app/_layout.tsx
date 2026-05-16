@@ -8,12 +8,22 @@ import { consumePendingDeepLink } from '../lib/pendingDeepLink';
 
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const [googleSignIn, setGoogleSignIn] = useState(false);
   const router = useRouter();
   const segments = useSegments();
 
   useEffect(() => {
+    // Detect Google OAuth callback before getSession resolves
+    if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
+      setGoogleSignIn(true);
+    }
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    const { data: listener } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event === 'SIGNED_IN' && s?.user.app_metadata?.provider === 'google') {
+        setGoogleSignIn(true);
+      }
+      setSession(s);
+    });
     return () => listener.subscription.unsubscribe();
   }, []);
 
@@ -26,8 +36,20 @@ export default function RootLayout() {
     if (!session && !inPublic && !inActivity && !inRoot) {
       router.replace('/');
     } else if (session && (inAuth || inPublic || inRoot)) {
+      const isGoogle = session.user.app_metadata?.provider === 'google';
+      const createdAt = new Date(session.user.created_at).getTime();
+      const lastSignIn = new Date(session.user.last_sign_in_at ?? session.user.created_at).getTime();
+      const isNewUser = isGoogle && (lastSignIn - createdAt) < 60_000;
       consumePendingDeepLink().then((href) => {
-        router.replace((href as any) ?? '/(tabs)');
+        if (href) { setGoogleSignIn(false); router.replace(href as any); return; }
+        if (googleSignIn) {
+          setGoogleSignIn(false);
+          const ageMs = Date.now() - new Date(session.user.created_at).getTime();
+          const dest = ageMs < 120_000 ? '/profile/setup?new=1' : '/profile/setup?returning=1';
+          router.replace(dest as any);
+        } else {
+          router.replace('/(tabs)');
+        }
       });
     }
   }, [session, segments]);
@@ -62,6 +84,7 @@ export default function RootLayout() {
           name="friends/new"
           options={{ headerShown: true, title: '', headerLeftContainerStyle: { paddingLeft: 0 } }}
         />
+        <Stack.Screen name="profile/setup" options={{ headerShown: false }} />
       </Stack>
     </>
   );

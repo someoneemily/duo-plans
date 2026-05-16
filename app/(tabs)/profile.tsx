@@ -42,7 +42,7 @@ function groupByDay(acts: Activity[]): { date: string; items: Activity[] }[] {
 
 export default function Profile() {
   const router = useRouter();
-  const [profile, setProfile] = useState<{ display_name: string | null; instagram_handle: string | null; phone_number: string | null } | null>(null);
+  const [profile, setProfile] = useState<{ display_name: string | null; username: string | null; instagram_handle: string | null; phone_number: string | null } | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [nameQuery, setNameQuery] = useState('');
@@ -56,7 +56,7 @@ export default function Profile() {
 
   async function load(uid: string) {
     const [{ data: prof }, acts, matchData] = await Promise.all([
-      supabase.from('profiles').select('display_name, instagram_handle, phone_number').eq('id', uid).single(),
+      supabase.from('profiles').select('display_name, username, instagram_handle, phone_number').eq('id', uid).single(),
       getMyActivities(uid),
       getMyMatches(uid),
     ]);
@@ -173,6 +173,9 @@ export default function Profile() {
             <Text style={styles.avatarText}>{displayName[0]?.toUpperCase()}</Text>
           </View>
           <Text style={styles.name}>{displayName}</Text>
+          {profile?.username ? (
+            <Text style={styles.username}>@{profile.username}</Text>
+          ) : null}
           <Text style={styles.tier}>{tier}</Text>
           {profile?.instagram_handle ? (
             <TouchableOpacity onPress={() => openInstagram(profile.instagram_handle!)} style={{ marginTop: 10 }}>
@@ -377,6 +380,7 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontSize: 22, color: '#111', fontFamily: 'Georgia' },
   name: { fontSize: 18, color: '#111', fontFamily: 'Georgia', marginBottom: 6 },
+  username: { fontSize: 13, color: colors.muted, marginBottom: 6 },
   tier: { fontSize: 11, color: colors.accent, letterSpacing: 1.5, textTransform: 'uppercase' },
   igHandle: { fontSize: 13, color: colors.accent, textDecorationLine: 'underline' },
   phoneNumber: { fontSize: 13, color: colors.muted, marginTop: 4 },

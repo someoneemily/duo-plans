@@ -4,6 +4,13 @@ export async function signInWithEmail(email: string, password: string) {
   return supabase.auth.signInWithPassword({ email, password });
 }
 
+export async function signInWithGoogle() {
+  const redirectTo = typeof window !== 'undefined'
+    ? window.location.origin
+    : 'https://duo-plans.vercel.app';
+  return supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
+}
+
 export async function signUpWithEmail(email: string, password: string, displayName: string) {
   return supabase.auth.signUp({
     email,

@@ -3,10 +3,11 @@ import {
   SafeAreaView, ScrollView, KeyboardAvoidingView, Platform,
   ActivityIndicator, Alert,
 } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { getProfile, updateProfile } from '../../lib/profile';
+import { isUsernameAvailable } from '../../lib/profiles';
 import { validateHandle, validatePhone } from '../../lib/validate';
 import { colors } from '../../lib/colors';
 
@@ -14,6 +15,9 @@ export default function EditProfile() {
   const router = useRouter();
   const [igHandle, setIgHandle] = useState('');
   const [phone, setPhone] = useState('');
+  const [username, setUsername] = useState('');
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
+  const originalUsername = useRef('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -26,10 +30,31 @@ export default function EditProfile() {
       if (profile) {
         setIgHandle(profile.instagram_handle ?? '');
         setPhone(profile.phone_number ?? '');
+        setUsername(profile.username ?? '');
+        originalUsername.current = profile.username ?? '';
       }
       setLoading(false);
     });
   }, []);
+
+  function handleUsernameChange(v: string) {
+    const val = v.toLowerCase().replace(/[^a-z0-9_]/g, '');
+    setUsername(val);
+    if (val === originalUsername.current) { setUsernameStatus('idle'); return; }
+    if (val.length < 3 || val.length > 20) { setUsernameStatus('invalid'); return; }
+    setUsernameStatus('checking');
+  }
+
+  useEffect(() => {
+    if (usernameStatus !== 'checking') return;
+    const t = setTimeout(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const available = await isUsernameAvailable(username, session.user.id);
+      setUsernameStatus(available ? 'available' : 'taken');
+    }, 400);
+    return () => clearTimeout(t);
+  }, [username, usernameStatus]);
 
   async function handleSave() {
     const handleError = igHandle.trim() ? validateHandle(igHandle) : null;
@@ -41,10 +66,13 @@ export default function EditProfile() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not signed in');
 
+      if (usernameStatus === 'taken') { Alert.alert('', 'That username is taken.'); return; }
+      if (usernameStatus === 'invalid') { Alert.alert('', 'Username must be 3–20 characters, letters/numbers/underscores only.'); return; }
       const handle = igHandle.trim().replace(/^@/, '');
       await updateProfile(session.user.id, {
         instagram_handle: handle || null,
         phone_number: phone.trim() || null,
+        username: username || null,
       });
       setSaved(true);
       setTimeout(() => router.replace('/(tabs)/profile'), 900);
@@ -68,6 +96,24 @@ export default function EditProfile() {
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <Text style={styles.pageTitle}>edit profile</Text>
+
+          <Text style={styles.label}>username</Text>
+          <View style={styles.usernameWrap}>
+            <Text style={styles.usernameAt}>@</Text>
+            <TextInput
+              style={[styles.usernameInput, { outline: 'none' } as any]}
+              placeholder="your_username"
+              placeholderTextColor="#ccc"
+              value={username}
+              onChangeText={handleUsernameChange}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {usernameStatus === 'checking' && <ActivityIndicator size="small" color="#ccc" style={styles.usernameStatus} />}
+            {usernameStatus === 'available' && <Text style={[styles.usernameStatus, styles.usernameAvailable]}>✓</Text>}
+            {usernameStatus === 'taken' && <Text style={[styles.usernameStatus, styles.usernameTaken]}>taken</Text>}
+            {usernameStatus === 'invalid' && <Text style={[styles.usernameStatus, styles.usernameTaken]}>3–20 chars</Text>}
+          </View>
 
           <Text style={styles.label}>my instagram</Text>
           <TextInput
@@ -139,6 +185,19 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     marginBottom: 32,
   },
+  usernameWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#ececec',
+    paddingBottom: 12,
+    marginBottom: 32,
+  },
+  usernameAt: { fontSize: 16, color: colors.muted, marginRight: 2 },
+  usernameInput: { flex: 1, fontSize: 16, color: '#111' },
+  usernameStatus: { marginLeft: 8 },
+  usernameAvailable: { fontSize: 13, color: colors.accent },
+  usernameTaken: { fontSize: 12, color: '#e05252' },
   hint: {
     fontSize: 12,
     color: colors.subtle,

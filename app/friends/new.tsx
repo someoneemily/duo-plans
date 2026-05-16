@@ -111,7 +111,7 @@ export default function NewSharedList() {
         <View style={styles.searchWrap}>
           <TextInput
             style={[styles.search, { outline: 'none' } as any]}
-            placeholder="search by name…"
+            placeholder="search by @username…"
             placeholderTextColor={colors.subtle}
             value={query}
             onChangeText={setQuery}
@@ -127,7 +127,10 @@ export default function NewSharedList() {
                 <View style={styles.avatar}>
                   <Text style={styles.avatarText}>{p.display_name?.[0]?.toUpperCase() ?? '?'}</Text>
                 </View>
-                <Text style={styles.resultName}>{p.display_name}</Text>
+                <View>
+                  <Text style={styles.resultName}>{p.display_name}</Text>
+                  {p.username ? <Text style={styles.resultUsername}>@{p.username}</Text> : null}
+                </View>
               </TouchableOpacity>
             ))}
           </View>
@@ -229,6 +232,7 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontSize: 13, color: colors.accent, fontWeight: '600' },
   resultName: { fontSize: 15, color: colors.text },
+  resultUsername: { fontSize: 12, color: colors.muted, marginTop: 1 },
 
   createBtn: {
     borderWidth: 1,

@@ -14,7 +14,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 
 export async function updateProfile(
   userId: string,
-  updates: { instagram_handle?: string | null; phone_number?: string | null; display_name?: string | null }
+  updates: { instagram_handle?: string | null; phone_number?: string | null; display_name?: string | null; username?: string | null }
 ): Promise<void> {
   const { error } = await supabase
     .from('profiles')

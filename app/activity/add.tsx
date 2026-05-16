@@ -188,7 +188,7 @@ export default function AddActivity() {
                   marginBottom: 12,
                   cursor: 'pointer',
                 } as any,
-                onChange: (e: any) => {
+                onBlur: (e: any) => {
                   if (e.target.value) {
                     handleAddDate(e.target.value);
                     e.target.value = '';

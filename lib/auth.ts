@@ -8,7 +8,13 @@ export async function signInWithGoogle() {
   const redirectTo = typeof window !== 'undefined'
     ? window.location.origin
     : 'https://duo-plans.vercel.app';
-  return supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
+  return supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo,
+      queryParams: { prompt: 'select_account' },
+    },
+  });
 }
 
 export async function signUpWithEmail(email: string, password: string, displayName: string) {

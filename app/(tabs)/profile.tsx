@@ -342,15 +342,11 @@ export default function Profile() {
             <Text style={styles.settingsLabel}>edit profile</Text>
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.settingsRow}>
-            <Text style={styles.settingsLabel}>notifications</Text>
+          <TouchableOpacity style={styles.settingsRow} onPress={handleSignOut}>
+            <Text style={[styles.settingsLabel, styles.signOutLabel]}>sign out</Text>
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity style={styles.signOut} onPress={handleSignOut}>
-          <Text style={styles.signOutText}>sign out</Text>
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -476,6 +472,5 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#f5f5f5',
   },
   settingsLabel: { fontSize: 14, color: '#111' },
-  signOut: { marginTop: 32, alignItems: 'center' },
-  signOutText: { fontSize: 13, color: colors.muted },
+  signOutLabel: { color: '#e05252' },
 });

@@ -232,17 +232,30 @@ export default function Explore() {
     if (item.isOwn) return;
     const key = item.name.toLowerCase();
     const existingId = savedMap[key];
+
     if (existingId) {
+      setSavedMap((prev) => { const n = { ...prev }; delete n[key]; return n; });
+      setFeed((prev) => prev.map((f) =>
+        f.name.toLowerCase() === key ? { ...f, interestedCount: Math.max(0, f.interestedCount - 1) } : f
+      ));
       await deleteActivity(existingId);
     } else {
+      setSavedMap((prev) => ({ ...prev, [key]: 'pending' }));
+      setFeed((prev) => prev.map((f) =>
+        f.name.toLowerCase() === key ? { ...f, interestedCount: f.interestedCount + 1 } : f
+      ));
       try {
-        await addActivity({ userId, name: item.name, category: item.category, isOpen: true, source: 'explore' });
+        const newActivity = await addActivity({ userId, name: item.name, category: item.category, isOpen: true, source: 'explore' });
+        setSavedMap((prev) => ({ ...prev, [key]: newActivity.id }));
       } catch (e: any) {
+        setSavedMap((prev) => { const n = { ...prev }; delete n[key]; return n; });
+        setFeed((prev) => prev.map((f) =>
+          f.name.toLowerCase() === key ? { ...f, interestedCount: Math.max(0, f.interestedCount - 1) } : f
+        ));
         Alert.alert('', e.message ?? 'Could not save');
         return;
       }
     }
-    await refresh(userId);
     await invalidateAndRefresh(key, item.name);
   }
 

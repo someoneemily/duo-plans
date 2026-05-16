@@ -1,6 +1,6 @@
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  SafeAreaView, ActivityIndicator, ScrollView, RefreshControl,
+  SafeAreaView, ActivityIndicator, ScrollView, RefreshControl, FlatList,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -161,13 +161,17 @@ export default function MyPlans() {
               <ActivityIndicator size="small" color="#ccc" />
             </View>
           ) : suggestions.length > 0 ? (
-            <View style={styles.planList}>
-              {suggestions.map((s) => (
-                <View key={s.name} style={styles.suggestionRow}>
-                  <View style={styles.rowCenter}>
-                    <Text style={styles.planName}>{s.name}</Text>
-                  </View>
-                  <View style={styles.right}>
+            <FlatList
+              data={suggestions}
+              keyExtractor={(s) => s.name}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.suggestionCarousel}
+              renderItem={({ item: s }) => (
+                <View style={styles.suggestionCard}>
+                  <Text style={styles.suggestionCardCategory}>{s.category.toLowerCase()}</Text>
+                  <Text style={styles.suggestionCardName}>{s.name}</Text>
+                  <View style={styles.suggestionCardActions}>
                     <TouchableOpacity
                       style={styles.suggestionAddBtn}
                       onPress={() => handleAddSuggestion(s)}
@@ -182,8 +186,8 @@ export default function MyPlans() {
                     </TouchableOpacity>
                   </View>
                 </View>
-              ))}
-            </View>
+              )}
+            />
           ) : null}
         </View>
 
@@ -370,13 +374,33 @@ const styles = StyleSheet.create({
   },
   suggestionRefreshBtn: { paddingBottom: 10 },
   suggestionLoading: { paddingVertical: 20, alignItems: 'center' },
-  suggestionRow: {
+  suggestionCarousel: { paddingHorizontal: 20, gap: 12, paddingBottom: 4 },
+  suggestionCard: {
+    width: 160,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 14,
+    gap: 6,
+    justifyContent: 'space-between',
+  },
+  suggestionCardCategory: {
+    fontSize: 10,
+    color: colors.accent,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  suggestionCardName: {
+    fontSize: 14,
+    color: '#111',
+    lineHeight: 20,
+    flex: 1,
+  },
+  suggestionCardActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#f0f0f0',
+    justifyContent: 'space-between',
+    marginTop: 8,
   },
   suggestionAddBtn: {
     borderWidth: 1,

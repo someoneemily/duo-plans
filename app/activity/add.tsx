@@ -194,6 +194,13 @@ export default function AddActivity() {
                     e.target.value = '';
                   }
                 },
+                onKeyDown: (e: any) => {
+                  if (e.key === 'Enter' && e.target.value) {
+                    handleAddDate(e.target.value);
+                    e.target.value = '';
+                    e.target.blur();
+                  }
+                },
               } as any)
             : (
               <TextInput

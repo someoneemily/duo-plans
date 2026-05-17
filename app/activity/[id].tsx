@@ -147,6 +147,28 @@ export default function ActivityDetail() {
 
   const isOwner = userId === activity.user_id;
   const isLoggedIn = !!userId;
+  const isSolo = !activity.is_open && !isOwner;
+
+  if (isSolo) {
+    const ownerName = activity.profiles?.display_name ?? 'someone';
+    return (
+      <SafeAreaView style={styles.container}>
+        <Stack.Screen options={{ headerLeft: () => (
+          <TouchableOpacity onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Text style={styles.backBtn}>‹</Text>
+          </TouchableOpacity>
+        )}} />
+        <View style={styles.center}>
+          <View style={styles.soloState}>
+            <Text style={styles.soloIcon}>🔒</Text>
+            <Text style={styles.soloTitle}>solo activity</Text>
+            <Text style={styles.soloOwner}>by {ownerName}</Text>
+            <Text style={styles.soloSub}>this plan is private</Text>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -257,6 +279,17 @@ const styles = StyleSheet.create({
   backBtn: { fontSize: 28, color: colors.muted, paddingLeft: 16 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   notFound: { fontSize: 15, color: colors.label },
+  soloState: { alignItems: 'center', paddingHorizontal: 40 },
+  soloIcon: { fontSize: 32, marginBottom: 16 },
+  soloTitle: {
+    fontFamily: 'Georgia',
+    fontSize: 22,
+    color: '#111',
+    fontWeight: '400',
+    marginBottom: 6,
+  },
+  soloOwner: { fontSize: 14, color: colors.muted, marginBottom: 8 },
+  soloSub: { fontSize: 13, color: colors.subtle },
   scroll: { paddingBottom: 60 },
   shareButton: {
     alignSelf: 'flex-end',

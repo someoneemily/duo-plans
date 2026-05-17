@@ -1,4 +1,4 @@
-const SQL_PATTERN = /('|;|--|\/\*|\*\/|\b(DROP|INSERT|UPDATE|DELETE|SELECT|TRUNCATE|ALTER|EXEC|UNION|CREATE)\b)/i;
+const SQL_PATTERN = /(;|--|\/\*|\*\/|\b(DROP|INSERT|UPDATE|DELETE|SELECT|TRUNCATE|ALTER|EXEC|UNION|CREATE)\b)/i;
 
 export function validateActivityName(name: string): string | null {
   const trimmed = name.trim();

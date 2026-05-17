@@ -14,11 +14,11 @@ const PEEK = 12;
 const N = 5;
 
 const CARDS = [
-  { name: 'Nobu Malibu',          category: 'restaurant', tagline: 'Legendary Malibu dining'      },
+  { name: 'Nobu Malibu',          category: 'food', tagline: 'Legendary Malibu dining'      },
   { name: 'Hot air balloon ride', category: 'experience', tagline: 'Drift above the world'         },
   { name: 'Weekend in Ojai',      category: 'travel',     tagline: 'Wine country escape'           },
   { name: 'Silent disco',         category: 'experience', tagline: 'Dance to your own beat'        },
-  { name: 'Champagne & oysters',  category: 'restaurant', tagline: 'The classic duo'               },
+  { name: 'Champagne & oysters',  category: 'food', tagline: 'The classic duo'               },
 ];
 
 const STACK_TOP = Math.round(SH * 0.5 - CARD_H / 2);

@@ -17,6 +17,8 @@ export default function ProfileSetup() {
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
+  const [instagramHandle, setInstagramHandle] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const originalUsername = useRef('');
@@ -39,13 +41,15 @@ export default function ProfileSetup() {
       setUserId(uid);
       const { data: profile } = await supabase
         .from('profiles')
-        .select('display_name, username')
+        .select('display_name, username, instagram_handle, phone_number')
         .eq('id', uid)
         .single();
       if (profile) {
         setDisplayName(profile.display_name ?? '');
         setUsername(profile.username ?? '');
         originalUsername.current = profile.username ?? '';
+        setInstagramHandle(profile.instagram_handle ?? '');
+        setPhoneNumber(profile.phone_number ?? '');
       }
     });
   }, []);
@@ -73,7 +77,11 @@ export default function ProfileSetup() {
     if (usernameStatus === 'taken' || usernameStatus === 'invalid') return;
     setSaving(true);
     try {
-      await updateProfile(userId, { username: username || null });
+      await updateProfile(userId, {
+        username: username || null,
+        instagram_handle: instagramHandle.replace(/^@/, '').trim() || null,
+        phone_number: phoneNumber.trim() || null,
+      });
       router.replace('/(tabs)');
     } finally {
       setSaving(false);
@@ -125,6 +133,34 @@ export default function ProfileSetup() {
             <Text style={styles.statusError}>3–20 characters, letters/numbers/underscores only</Text>
           )}
 
+          <Text style={[styles.label, { marginTop: 32 }]}>instagram (optional)</Text>
+          <Text style={styles.hint}>so friends can reach you about activities</Text>
+          <View style={styles.usernameWrap}>
+            <Text style={styles.at}>@</Text>
+            <TextInput
+              style={[styles.usernameInput, { outline: 'none' } as any]}
+              value={instagramHandle.replace(/^@/, '')}
+              onChangeText={(v) => setInstagramHandle(v.replace(/^@/, ''))}
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholder="yourhandle"
+              placeholderTextColor="#ccc"
+            />
+          </View>
+
+          <Text style={[styles.label, { marginTop: 24 }]}>phone number (optional)</Text>
+          <Text style={styles.hint}>or share your number instead</Text>
+          <View style={styles.usernameWrap}>
+            <TextInput
+              style={[styles.usernameInput, { outline: 'none' } as any]}
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              keyboardType="phone-pad"
+              placeholder="+1 555 000 0000"
+              placeholderTextColor="#ccc"
+            />
+          </View>
+
           <TouchableOpacity
             style={[styles.button, !canContinue && styles.buttonDisabled]}
             onPress={handleContinue}
@@ -132,7 +168,7 @@ export default function ProfileSetup() {
           >
             {saving
               ? <ActivityIndicator color="#111" />
-              : <Text style={styles.buttonText}>LET'S GO</Text>
+              : <Text style={styles.buttonText}>Start making plans</Text>
             }
           </TouchableOpacity>
         </View>

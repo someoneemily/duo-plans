@@ -13,14 +13,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../lib/colors';
 import type { Activity, Category, Profile } from '../../lib/types';
 
-const CATEGORIES = ['all', 'restaurant', 'experience', 'travel'];
+const CATEGORIES = ['all', 'food', 'experience', 'travel'];
 
 const CATALOG: { name: string; category: Category }[] = [
-  { name: 'Nobu Malibu',            category: 'Restaurant' },
+  { name: 'Nobu Malibu',            category: 'Food' },
   { name: 'Hot air balloon ride',   category: 'Experience' },
   { name: 'Bali trip',              category: 'Travel' },
   { name: 'Sourdough baking class', category: 'Experience' },
-  { name: 'Osteria Mozza',          category: 'Restaurant' },
+  { name: 'Osteria Mozza',          category: 'Food' },
   { name: 'Tokyo food tour',        category: 'Travel' },
 ];
 
@@ -340,21 +340,19 @@ export default function Explore() {
             <View>
               <TouchableOpacity style={styles.row} onPress={() => handleToggleExpand(item)} activeOpacity={0.7}>
                 <View style={styles.rowLeft}>
-                  <View style={styles.nameRow}>
-                    <Text style={styles.rowName}>{item.name}</Text>
-                    {item.isOwn && (
-                      <View style={styles.ownBadge}>
-                        <Text style={styles.ownBadgeText}>yours</Text>
-                      </View>
-                    )}
-                  </View>
+                  <Text style={styles.rowName}>{item.name}</Text>
                   <Text style={styles.rowMeta}>
                     {item.category.toLowerCase()}
                     {item.interestedCount > 0 ? ` · ${item.interestedCount} interested` : ''}
                     {item.nextDate ? ` · ${formatDate(item.nextDate)}` : ''}
                   </Text>
                 </View>
-                {hearted && (
+                {item.isOwn && (
+                  <View style={styles.ownBadge}>
+                    <Text style={styles.ownBadgeText}>yours</Text>
+                  </View>
+                )}
+                {!item.isOwn && hearted && (
                   <Ionicons
                     name={expanded ? 'chevron-up' : 'chevron-down'}
                     size={13}
@@ -397,7 +395,7 @@ export default function Explore() {
                     </Text>
                   ) : (
                     <>
-                      <Text style={styles.interestedLabel}>reach out · {interested.length}</Text>
+                      <Text style={styles.interestedLabel}>reach out over ig or text to connect</Text>
                       {interested.map((profile) => (
                         <View key={profile.id} style={styles.personRow}>
                           <Text style={styles.personName}>{profile.display_name ?? 'someone'}</Text>

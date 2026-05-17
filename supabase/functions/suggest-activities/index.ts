@@ -6,17 +6,17 @@ const corsHeaders = {
 }
 
 const FALLBACK_POOL = [
-  // Restaurant
-  { name: 'Omakase dinner', category: 'Restaurant' },
-  { name: 'Natural wine tasting', category: 'Restaurant' },
-  { name: 'Farmers market brunch', category: 'Restaurant' },
-  { name: "Chef's tasting menu", category: 'Restaurant' },
-  { name: 'Late-night ramen run', category: 'Restaurant' },
-  { name: 'Champagne and oysters', category: 'Restaurant' },
-  { name: 'Dim sum crawl', category: 'Restaurant' },
-  { name: 'Speakeasy cocktail bar', category: 'Restaurant' },
-  { name: 'Rooftop dinner', category: 'Restaurant' },
-  { name: 'Private wine cellar tasting', category: 'Restaurant' },
+  // Food
+  { name: 'Omakase dinner', category: 'Food' },
+  { name: 'Natural wine tasting', category: 'Food' },
+  { name: 'Farmers market brunch', category: 'Food' },
+  { name: "Chef's tasting menu", category: 'Food' },
+  { name: 'Late-night ramen run', category: 'Food' },
+  { name: 'Champagne and oysters', category: 'Food' },
+  { name: 'Dim sum crawl', category: 'Food' },
+  { name: 'Speakeasy cocktail bar', category: 'Food' },
+  { name: 'Rooftop dinner', category: 'Food' },
+  { name: 'Private wine cellar tasting', category: 'Food' },
   // Experience
   { name: 'Pottery class', category: 'Experience' },
   { name: 'Rooftop bar crawl', category: 'Experience' },
@@ -139,7 +139,7 @@ Rules:
 - Activities must be safe, public, and social (things you'd do with friends)
 - Do NOT repeat anything already in their list
 - Lean into the vibe of what they already like but push it a little further
-Reply with ONLY a JSON array: [{"name": "...", "category": "Restaurant"|"Experience"|"Travel"|"Other"}, ...]
+Reply with ONLY a JSON array: [{"name": "...", "category": "Food"|"Experience"|"Travel"|"Other"}, ...]
 No explanation, no markdown, just the JSON array.`
 
   const existingNames = new Set((activities ?? []).map((a: { name: string }) => a.name.toLowerCase()))

@@ -5,6 +5,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useFocusEffect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { getMyActivities, addActivity, toggleOpen, deleteActivity, markAsCompleted } from '../../lib/activities';
 import CompletionCelebration from '../../components/CompletionCelebration';
@@ -25,7 +26,9 @@ export default function MyPlans() {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [planFilter, setPlanFilter] = useState<'all' | 'created' | 'explore'>('all');
   const [refreshCount, setRefreshCount] = useState(0);
+  const [emptyQuote, setEmptyQuote] = useState('Let\'s start filling up your bucket list items.');
   const hasFetchedSuggestions = useRef(false);
+  const hasFetchedQuote = useRef(false);
 
   async function load(uid: string) {
     try {
@@ -34,6 +37,15 @@ export default function MyPlans() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  }
+
+  async function fetchEmptyQuote() {
+    if (hasFetchedQuote.current) return;
+    hasFetchedQuote.current = true;
+    const { data } = await supabase.from('empty_state_quotes').select('text');
+    if (data && data.length > 0) {
+      setEmptyQuote(data[Math.floor(Math.random() * data.length)].text);
     }
   }
 
@@ -115,6 +127,7 @@ export default function MyPlans() {
     if (userId && !hasFetchedSuggestions.current) {
       hasFetchedSuggestions.current = true;
       fetchSuggestions();
+      fetchEmptyQuote();
     }
   }, [userId]);
 
@@ -192,6 +205,16 @@ export default function MyPlans() {
         </View>
 
         {/* Plans — consolidated with filter */}
+        <View style={styles.plansHeader}>
+          <Text style={styles.sectionLabel}>
+            active plans · {planFilter === 'all' ? created.length + fromExplore.length : planFilter === 'created' ? created.length : fromExplore.length}
+          </Text>
+          {planFilter !== 'explore' && (
+            <TouchableOpacity onPress={() => router.push('/activity/add?source=myplans' as any)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.newPlanBtn}>+ new</Text>
+            </TouchableOpacity>
+          )}
+        </View>
         <View style={styles.filterRow}>
           {(['all', 'created', 'explore'] as const).map((f) => (
             <TouchableOpacity
@@ -213,47 +236,45 @@ export default function MyPlans() {
           const isEmpty = visible.length === 0;
 
           if (isEmpty) {
+            if (planFilter === 'explore') {
+              return (
+                <View style={styles.exploreEmpty}>
+                  <Text style={styles.exploreEmptyText}>Heart something in Explore to save it here.</Text>
+                </View>
+              );
+            }
             return (
-              <View style={styles.emptyCard}>
-                {planFilter !== 'explore' && (
-                  <TouchableOpacity style={styles.plusBox} onPress={() => router.push('/activity/add')}>
-                    <Text style={styles.plusText}>+</Text>
-                  </TouchableOpacity>
-                )}
-                <Text style={styles.emptyHint}>
-                  {planFilter === 'explore'
-                    ? 'Heart something in Explore to save it here.'
-                    : 'Nothing added yet.'}
-                </Text>
-                {planFilter !== 'explore' && (
-                  <TouchableOpacity style={styles.outlineBtn} onPress={() => router.push('/activity/add')}>
-                    <Text style={styles.outlineBtnText}>ADD A PLAN</Text>
-                  </TouchableOpacity>
-                )}
+              <View style={styles.emptyState}>
+                <View style={styles.emptyIconCircle}>
+                  <Ionicons name="checkmark-done-outline" size={44} color={colors.accent} />
+                </View>
+                <Text style={styles.emptyTitle}>no plans yet</Text>
+                <Text style={styles.emptyQuote}>{emptyQuote}</Text>
+                <TouchableOpacity
+                  style={styles.emptyCreateBtn}
+                  onPress={() => router.push('/activity/add?source=myplans' as any)}
+                >
+                  <Text style={styles.emptyCreateBtnText}>+ create your first plan</Text>
+                </TouchableOpacity>
               </View>
             );
           }
 
           return (
-            <>
-              {planFilter !== 'explore' && (
-                <TouchableOpacity style={styles.addRow} onPress={() => router.push('/activity/add')}>
-                  <Text style={styles.addRowText}>+ new plan</Text>
-                </TouchableOpacity>
-              )}
-              <View style={styles.planList}>
-                {visible.map((item) => (
-                  <ActivityRow
-                    key={item.id}
-                    item={item}
-                    userId={userId!}
-                    onToggleOpen={() => handleToggleOpen(item)}
-                    onComplete={() => handleComplete(item)}
-                    onDelete={() => handleDelete(item)}
-                  />
-                ))}
-              </View>
-            </>
+            <View style={styles.planList}>
+              {visible.map((item, index) => (
+                <ActivityRow
+                  key={item.id}
+                  item={item}
+                  userId={userId!}
+                  shade={index % 2 === 0}
+                  noBorder
+                  onToggleOpen={() => handleToggleOpen(item)}
+                  onComplete={() => handleComplete(item)}
+                  onDelete={() => handleDelete(item)}
+                />
+              ))}
+            </View>
           );
         })()}
 
@@ -262,10 +283,11 @@ export default function MyPlans() {
           <>
             <Text style={[styles.sectionLabel, { marginTop: 36 }]}>completed · {done.length}</Text>
             <View style={styles.planList}>
-              {done.map((item) => (
+              {done.map((item, index) => (
                 <ActivityRow
                   key={item.id}
                   item={item}
+                  shade={index % 2 === 0}
                   userId={userId!}
                   onDelete={() => handleDelete(item)}
                 />
@@ -304,43 +326,61 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   sectionLabel: { fontSize: 12, color: colors.label, paddingHorizontal: 20, marginBottom: 10 },
-  emptyCard: {
-    marginHorizontal: 20,
-    borderWidth: 1,
-    borderColor: '#ececec',
-    borderRadius: 10,
-    paddingVertical: 32,
-    paddingHorizontal: 24,
+  emptyState: {
     alignItems: 'center',
-    gap: 16,
+    paddingTop: 32,
+    paddingBottom: 48,
+    paddingHorizontal: 32,
   },
-  plusBox: {
-    width: 56, height: 56,
-    borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 8,
-    justifyContent: 'center', alignItems: 'center',
+  emptyIconCircle: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: colors.tint,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 28,
   },
-  plusText: { fontSize: 22, color: colors.subtle, fontWeight: '300' },
-  emptyHint: { fontSize: 13, color: colors.muted, fontStyle: 'italic', textAlign: 'center' },
-  outlineBtn: {
-    borderWidth: 1, borderColor: '#111',
-    paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20,
+  emptyTitle: {
+    fontFamily: 'Georgia',
+    fontSize: 22,
+    color: '#111',
+    fontWeight: '400',
+    marginBottom: 10,
   },
-  outlineBtnText: { fontSize: 11, color: '#111', letterSpacing: 1.2, fontWeight: '500' },
-  addRow: {
-    marginHorizontal: 20,
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ececec',
+  emptyQuote: {
+    fontSize: 13,
+    color: colors.muted,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 32,
   },
-  addRowText: {
-    fontSize: 14,
+  emptyCreateBtn: {
+    backgroundColor: '#111',
+    borderRadius: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+  },
+  emptyCreateBtnText: { fontSize: 13, color: '#fff', letterSpacing: 0.3 },
+  exploreEmpty: { paddingHorizontal: 20, paddingTop: 16 },
+  exploreEmptyText: { fontSize: 13, color: colors.muted, fontStyle: 'italic' },
+  plansHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 20,
+    marginBottom: 10,
+  },
+  newPlanBtn: {
+    fontSize: 13,
     color: colors.accent,
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
   planList: {
-    marginHorizontal: 20, borderWidth: 1, borderColor: '#ececec', borderRadius: 10,
+    marginHorizontal: 20,
+    marginBottom: 4,
+    borderRadius: 14,
+    overflow: 'hidden',
   },
   filterRow: {
     flexDirection: 'row',

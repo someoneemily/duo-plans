@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   SafeAreaView, ScrollView, KeyboardAvoidingView, Platform,
@@ -8,12 +8,20 @@ import { useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { addActivity, updateActivity } from '../../lib/activities';
-import { addActivityToList } from '../../lib/sharedLists';
+import { addActivityToList, getMySharedLists } from '../../lib/sharedLists';
 import { validateActivityName } from '../../lib/validate';
-import type { Category } from '../../lib/types';
+import type { Category, SharedList, Profile } from '../../lib/types';
 import { colors } from '../../lib/colors';
 
-const CATEGORIES: Category[] = ['Restaurant', 'Experience', 'Travel', 'Other'];
+const CATEGORIES: Category[] = ['Food', 'Experience', 'Travel', 'Other'];
+
+function listLabel(list: SharedList, userId: string): string {
+  const others = list.members.filter(
+    (m) => m.user_id !== userId && m.status !== 'declined'
+  );
+  if (others.length === 0) return 'shared list';
+  return 'with ' + others.map((m) => (m.profile as Profile | null)?.display_name ?? 'someone').join(', ');
+}
 
 const TODAY = new Date().toISOString().split('T')[0];
 
@@ -33,6 +41,7 @@ export default function AddActivity() {
     prefillDates,
     prefillIsOpen,
     prefillIsListOnly,
+    source,
   } = useLocalSearchParams<{
     listId?: string;
     activityId?: string;
@@ -42,9 +51,11 @@ export default function AddActivity() {
     prefillDates?: string;
     prefillIsOpen?: string;
     prefillIsListOnly?: string;
+    source?: string;
   }>();
   const isEditMode = !!activityId;
   const isListAdd = !isEditMode && !!listId;
+  const isFromMyPlans = !isEditMode && !isListAdd && source === 'myplans';
   const isListOnly = prefillIsListOnly === 'true';
   const [name, setName] = useState(prefillName ?? '');
   const [category, setCategory] = useState<Category | ''>((prefillCategory as Category) ?? '');
@@ -58,6 +69,28 @@ export default function AddActivity() {
   const [saving, setSaving] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [sharedLists, setSharedLists] = useState<SharedList[]>([]);
+  const [selectedListId, setSelectedListId] = useState<string | null>(null);
+  const [loadingLists, setLoadingLists] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isFromMyPlans) return;
+    setLoadingLists(true);
+    supabase.auth.getSession().then(async ({ data }) => {
+      const uid = data.session?.user.id;
+      if (!uid) return;
+      setCurrentUserId(uid);
+      try {
+        const lists = await getMySharedLists(uid);
+        setSharedLists(lists.filter((l) =>
+          l.members.some((m) => m.user_id === uid && (m.status === 'accepted' || l.creator_id === uid))
+        ));
+      } finally {
+        setLoadingLists(false);
+      }
+    });
+  }, []);
 
   function handleAddDate(dateStr: string) {
     if (!dateStr) return;
@@ -93,18 +126,27 @@ export default function AddActivity() {
           isOpen: isListOnly ? false : isOpen,
         });
       } else {
+        const targetListId = isListAdd ? listId! : (selectedListId ?? null);
         const activity = await addActivity({
           userId: session.user.id,
           name: name.trim(),
           category: category as Category,
           notes: notes.trim() || undefined,
-          isOpen: isListAdd ? false : isOpen,
-          isListOnly: isListAdd,
+          isOpen: targetListId ? false : isOpen,
+          isListOnly: !!targetListId,
           dates: dates.length > 0 ? dates : undefined,
         });
-        if (isListAdd && listId) {
-          await addActivityToList(listId, activity.id, session.user.id);
+        if (targetListId) {
+          await addActivityToList(targetListId, activity.id, session.user.id);
         }
+        if (isListAdd && listId) {
+          router.back();
+        } else if (selectedListId) {
+          router.replace(`/friends/${selectedListId}` as any);
+        } else {
+          router.back();
+        }
+        return;
       }
       router.back();
     } catch (err: any) {
@@ -216,7 +258,42 @@ export default function AddActivity() {
             )
           }
 
-          {!isListAdd && !isListOnly && (
+          {isFromMyPlans && (
+            <View style={styles.listPickerSection}>
+              <Text style={styles.label}>add to a shared list</Text>
+              {loadingLists ? (
+                <ActivityIndicator size="small" color={colors.subtle} style={{ marginBottom: 12 }} />
+              ) : sharedLists.length === 0 ? (
+                <Text style={styles.listPickerEmpty}>no shared lists yet</Text>
+              ) : (
+                <View style={styles.listPickerOptions}>
+                  <TouchableOpacity
+                    style={[styles.listPickerRow, selectedListId === null && styles.listPickerRowSelected]}
+                    onPress={() => setSelectedListId(null)}
+                  >
+                    <Text style={[styles.listPickerLabel, selectedListId === null && styles.listPickerLabelSelected]}>
+                      none
+                    </Text>
+                    {selectedListId === null && <Text style={styles.listPickerCheck}>✓</Text>}
+                  </TouchableOpacity>
+                  {sharedLists.map((list) => (
+                    <TouchableOpacity
+                      key={list.id}
+                      style={[styles.listPickerRow, selectedListId === list.id && styles.listPickerRowSelected]}
+                      onPress={() => setSelectedListId(list.id === selectedListId ? null : list.id)}
+                    >
+                      <Text style={[styles.listPickerLabel, selectedListId === list.id && styles.listPickerLabelSelected]}>
+                        {listLabel(list, currentUserId ?? '')}
+                      </Text>
+                      {selectedListId === list.id && <Text style={styles.listPickerCheck}>✓</Text>}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+
+          {!isListAdd && !isListOnly && !selectedListId && (
             <TouchableOpacity style={styles.openRow} onPress={() => setIsOpen(!isOpen)}>
               <View>
                 <Text style={styles.openLabel}>open to doing with someone</Text>
@@ -345,6 +422,29 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2,
   },
   thumbOn: { alignSelf: 'flex-end' },
+  listPickerSection: { marginTop: 8, marginBottom: 8 },
+  listPickerEmpty: { fontSize: 13, color: colors.muted, fontStyle: 'italic', marginBottom: 16 },
+  listPickerOptions: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginBottom: 24,
+  },
+  listPickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    backgroundColor: '#fff',
+  },
+  listPickerRowSelected: { backgroundColor: colors.tint },
+  listPickerLabel: { fontSize: 14, color: colors.text },
+  listPickerLabelSelected: { color: colors.accent },
+  listPickerCheck: { fontSize: 13, color: colors.accent },
   save: {
     borderWidth: 1,
     borderColor: '#111',

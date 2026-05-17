@@ -57,8 +57,10 @@ export interface ActivityRowProps {
   userId: string;
   onComplete?: () => void;
   onDelete?: () => void;
-  onToggleOpen?: () => void;   // my-plans mode: shows open/solo chip + share
+  onToggleOpen?: () => void;   // my-plans mode: shows public/solo chip + share
   addedBy?: Profile | null;    // shared-list mode: shows "added by"; also suppresses interested-users
+  shade?: boolean;             // alternating row background
+  noBorder?: boolean;
 }
 
 export function ActivityRow({
@@ -68,6 +70,8 @@ export function ActivityRow({
   onDelete,
   onToggleOpen,
   addedBy,
+  shade,
+  noBorder,
 }: ActivityRowProps) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
@@ -122,7 +126,7 @@ export function ActivityRow({
   }
 
   return (
-    <View style={[styles.item, isDone && styles.itemDone]}>
+    <View style={[styles.item, shade && styles.itemShaded, noBorder && styles.itemNoBorder, isDone && styles.itemDone]}>
       <TouchableOpacity style={styles.row} onPress={toggleExpand} activeOpacity={0.7}>
         <TouchableOpacity
           onPress={!isDone && onComplete ? onComplete : undefined}
@@ -147,6 +151,15 @@ export function ActivityRow({
           </Text>
         </View>
 
+        {isListMode && !isDone && (
+          <Ionicons
+            name={expanded ? 'chevron-up' : 'chevron-down'}
+            size={14}
+            color={colors.subtle}
+            style={{ marginLeft: 8 }}
+          />
+        )}
+
         {!isDone && (onToggleOpen || (!isListMode && item.source === 'explore' && onDelete)) && (
           <View style={styles.right}>
             {onToggleOpen && item.source !== 'explore' && (
@@ -155,13 +168,8 @@ export function ActivityRow({
                 style={[styles.duoChip, item.is_open && styles.duoChipOn]}
               >
                 <Text style={[styles.duoChipText, item.is_open && styles.duoChipTextOn]}>
-                  {item.is_open ? 'open' : 'solo'}
+                  {item.is_open ? 'public' : 'solo'}
                 </Text>
-              </TouchableOpacity>
-            )}
-            {onToggleOpen && item.source !== 'explore' && (
-              <TouchableOpacity onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="share-outline" size={16} color={shared ? colors.accent : colors.subtle} />
               </TouchableOpacity>
             )}
             {!isListMode && item.source === 'explore' && onDelete && (
@@ -169,12 +177,17 @@ export function ActivityRow({
                 <Ionicons name="heart" size={16} color={colors.accent} />
               </TouchableOpacity>
             )}
+            {!isListMode && (
+              <TouchableOpacity onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="share-outline" size={16} color={shared ? colors.accent : colors.subtle} />
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </TouchableOpacity>
 
       {expanded && (
-        <View style={styles.expanded}>
+        <View style={[styles.expanded, { backgroundColor: shade ? colors.surface : '#fff' }]}>
           {item.notes ? <LinkText style={styles.expandedNotes}>{item.notes}</LinkText> : null}
 
           {isListMode && addedBy?.display_name ? (
@@ -231,8 +244,11 @@ export function ActivityRow({
 const styles = StyleSheet.create({
   item: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.border,
+    backgroundColor: '#fff',
   },
+  itemShaded: { backgroundColor: colors.surface },
+  itemNoBorder: { borderBottomWidth: 0 },
   itemDone: { opacity: 0.45 },
   row: {
     flexDirection: 'row',
@@ -249,20 +265,20 @@ const styles = StyleSheet.create({
   meta: { fontSize: 12, color: colors.muted, marginTop: 2 },
   right: { flexDirection: 'row', alignItems: 'center', gap: 14, marginLeft: 8 },
   duoChip: {
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: colors.disabled,
+    backgroundColor: '#fff',
   },
   duoChipOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-  duoChipText: { fontSize: 10, color: colors.muted, letterSpacing: 0.5 },
-  duoChipTextOn: { color: '#fff' },
+  duoChipText: { fontSize: 9, color: colors.label, letterSpacing: 0.9, textTransform: 'uppercase' },
+  duoChipTextOn: { color: '#fff', letterSpacing: 0.9 },
   expanded: {
     paddingHorizontal: 54,
     paddingBottom: 14,
     paddingTop: 4,
-    backgroundColor: '#fafafa',
     gap: 8,
   },
   expandedNotes: { fontSize: 13, color: colors.secondary, lineHeight: 19 },

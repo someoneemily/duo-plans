@@ -1,4 +1,4 @@
-export type Category = 'Restaurant' | 'Experience' | 'Travel' | 'Other';
+export type Category = 'Food' | 'Experience' | 'Travel' | 'Other';
 
 export interface Profile {
   id: string;

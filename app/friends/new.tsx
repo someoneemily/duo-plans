@@ -136,19 +136,6 @@ export default function NewSharedList() {
           </View>
         )}
 
-        {selected.length > 0 && (
-          <TouchableOpacity
-            style={[styles.createBtn, creating && { opacity: 0.6 }]}
-            onPress={handleCreate}
-            disabled={creating}
-          >
-            {creating
-              ? <ActivityIndicator color={colors.accent} />
-              : <Text style={styles.createBtnText}>+ add</Text>
-            }
-          </TouchableOpacity>
-        )}
-
         {error && (
           <View style={styles.errorCard}>
             <Text style={styles.errorText}>{error.message}</Text>
@@ -161,6 +148,17 @@ export default function NewSharedList() {
             )}
           </View>
         )}
+
+        <TouchableOpacity
+          style={[styles.createBtn, (!selected.length || creating) && styles.createBtnDisabled]}
+          onPress={handleCreate}
+          disabled={!selected.length || creating}
+        >
+          {creating
+            ? <ActivityIndicator color="#111" />
+            : <Text style={styles.createBtnText}>CREATE LIST</Text>
+          }
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -236,15 +234,14 @@ const styles = StyleSheet.create({
 
   createBtn: {
     borderWidth: 1,
-    borderColor: colors.accent,
+    borderColor: '#111',
     borderRadius: 24,
-    paddingVertical: 11,
-    paddingHorizontal: 24,
+    paddingVertical: 16,
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    marginTop: 8,
+    marginTop: 24,
   },
-  createBtnText: { fontSize: 13, color: colors.accent },
+  createBtnDisabled: { borderColor: '#e0e0e0' },
+  createBtnText: { fontSize: 11, color: '#111', letterSpacing: 1.5, fontWeight: '500' },
 
   errorCard: {
     marginTop: 16,

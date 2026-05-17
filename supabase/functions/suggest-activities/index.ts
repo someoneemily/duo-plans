@@ -122,6 +122,12 @@ Deno.serve(async (req) => {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return new Response('Unauthorized', { status: 401 })
 
+  let excludeNames: string[] = []
+  try {
+    const body = await req.json()
+    excludeNames = (body?.excludeNames ?? []).map((n: string) => n.toLowerCase())
+  } catch { /* no body or invalid JSON is fine */ }
+
   const provider = Deno.env.get('LLM_PROVIDER') ?? 'openrouter'
   const model = Deno.env.get('LLM_MODEL') ?? '(not set)'
 
@@ -133,16 +139,23 @@ Deno.serve(async (req) => {
 
   const existing = (activities ?? []).map((a: { name: string; category: string }) => `${a.name} (${a.category})`).join(', ')
 
+  const alreadySuggested = excludeNames.length > 0
+    ? `\n- Do NOT suggest any of these previously shown suggestions: ${excludeNames.join(', ')}`
+    : ''
+
   const prompt = `A user has these activity plans: ${existing || 'none yet'}.
 Suggest 3 new activities inspired by their taste but slightly more adventurous — a step up in experience, not just more of the same.
 Rules:
 - Activities must be safe, public, and social (things you'd do with friends)
-- Do NOT repeat anything already in their list
+- Do NOT repeat anything already in their list${alreadySuggested}
 - Lean into the vibe of what they already like but push it a little further
 Reply with ONLY a JSON array: [{"name": "...", "category": "Food"|"Experience"|"Travel"|"Other"}, ...]
 No explanation, no markdown, just the JSON array.`
 
-  const existingNames = new Set((activities ?? []).map((a: { name: string }) => a.name.toLowerCase()))
+  const existingNames = new Set([
+    ...(activities ?? []).map((a: { name: string }) => a.name.toLowerCase()),
+    ...excludeNames,
+  ])
   const filterExisting = (list: { name: string; category: string }[]) =>
     list.filter((s) => !existingNames.has(s.name.toLowerCase()))
 

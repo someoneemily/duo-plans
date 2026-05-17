@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   Animated, View, Text, StyleSheet, Dimensions,
   TouchableOpacity, SafeAreaView,
@@ -8,17 +8,17 @@ import { colors } from '../lib/colors';
 
 const { height: SH, width: SW } = Dimensions.get('window');
 const CARD_W = Math.min(SW * 0.80, 330);
-const CARD_H = Math.min(SH * 0.252, 186);
+const CARD_H = Math.min(SH * 0.14, 108);
 const SLOT = Math.min(SH * 0.68, 460);
-const PEEK = 12;
+const PEEK = 5;
 const N = 5;
 
 const CARDS = [
-  { name: 'Nobu Malibu',          category: 'food', tagline: 'Legendary Malibu dining'      },
-  { name: 'Hot air balloon ride', category: 'experience', tagline: 'Drift above the world'         },
-  { name: 'Weekend in Ojai',      category: 'travel',     tagline: 'Wine country escape'           },
-  { name: 'Silent disco',         category: 'experience', tagline: 'Dance to your own beat'        },
-  { name: 'Champagne & oysters',  category: 'food', tagline: 'The classic duo'               },
+  { name: 'Nobu Malibu',          category: 'food',       tagline: 'Legendary Malibu dining'   },
+  { name: 'Hot air balloon ride', category: 'experience', tagline: 'Drift above the world'      },
+  { name: 'Weekend in Ojai',      category: 'travel',     tagline: 'Wine country escape'        },
+  { name: 'Silent disco',         category: 'experience', tagline: 'Dance to your own beat'     },
+  { name: 'Champagne & oysters',  category: 'food',       tagline: 'The classic duo'            },
 ];
 
 const STACK_TOP = Math.round(SH * 0.5 - CARD_H / 2);
@@ -94,16 +94,53 @@ function cardOpacity(i: number, scrollY: Animated.Value): Animated.AnimatedInter
   });
 }
 
+// Phase 1 (0–1s): quadratic ramp → position 0.4, speed 1.6
+// Phase 2 (1–1.5s): linear cruise at speed 1.6 → position 0.8
+// Phase 3 (1.5–2s): ease-out brake → position 1.0
+// All derivatives match at junctions (no jerk)
+function scrollEasing(t: number) {
+  if (t < 0.5) return 1.6 * t * t;
+  if (t < 0.75) return 0.4 + 1.6 * (t - 0.5);
+  const s = (t - 0.75) / 0.25;
+  return 0.8 + 0.2 * (1 - (1 - s) * (1 - s));
+}
+
 export default function Index() {
   const router = useRouter();
   const scrollY = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<any>(null);
   const TOTAL_H = N * SLOT + SH * 1.1;
 
   const hintOpacity = scrollY.interpolate({
-    inputRange: [0, SLOT * 0.2],
+    inputRange: [0, SLOT * 0.15],
     outputRange: [1, 0],
     extrapolate: 'clamp',
   });
+
+  useEffect(() => {
+    const target = N * SLOT;
+    const duration = 2000;
+    let rafId: number;
+
+    const delay = setTimeout(() => {
+      const startTime = Date.now();
+
+      function step() {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const y = target * scrollEasing(progress);
+        scrollRef.current?.scrollTo({ y, animated: false });
+        if (progress < 1) rafId = requestAnimationFrame(step);
+      }
+
+      rafId = requestAnimationFrame(step);
+    }, 800);
+
+    return () => {
+      clearTimeout(delay);
+      cancelAnimationFrame(rafId);
+    };
+  }, []);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -125,12 +162,9 @@ export default function Index() {
               },
             ]}
           >
-            <Text style={styles.cardIndex}>{i + 1} / {N}</Text>
-            <View style={styles.cardBody}>
-              <Text style={styles.cardCategory}>{card.category}</Text>
-              <Text style={styles.cardName}>{card.name}</Text>
-              <Text style={styles.cardTagline}>{card.tagline}</Text>
-            </View>
+            <Text style={styles.cardCategory}>{card.category}</Text>
+            <Text style={styles.cardName}>{card.name}</Text>
+            <Text style={styles.cardTagline}>{card.tagline}</Text>
           </Animated.View>
         ))}
       </View>
@@ -145,6 +179,7 @@ export default function Index() {
       </Animated.View>
 
       <Animated.ScrollView
+        ref={scrollRef}
         style={StyleSheet.absoluteFill}
         contentContainerStyle={{ minHeight: TOTAL_H }}
         onScroll={Animated.event(
@@ -217,41 +252,37 @@ const styles = StyleSheet.create({
     width: CARD_W,
     height: CARD_H,
     backgroundColor: '#fff',
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: colors.accent,
-    padding: 18,
-    justifyContent: 'space-between',
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.14,
-    shadowRadius: 20,
-    elevation: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    justifyContent: 'center',
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  cardIndex: {
-    fontSize: 11,
-    color: colors.borderLight,
-    letterSpacing: 0.5,
-    alignSelf: 'flex-end',
-  },
-  cardBody: { gap: 8 },
   cardCategory: {
-    fontSize: 10,
+    fontSize: 9,
     color: colors.accent,
     letterSpacing: 1.4,
     textTransform: 'uppercase',
+    marginBottom: 2,
   },
   cardName: {
     fontFamily: 'Georgia',
-    fontSize: 20,
+    fontSize: 18,
     color: '#111',
     fontWeight: '400',
-    lineHeight: 26,
+    lineHeight: 24,
   },
   cardTagline: {
-    fontSize: 13,
+    fontSize: 12,
     color: colors.muted,
-    lineHeight: 19,
+    lineHeight: 17,
   },
 
   scrollHint: {

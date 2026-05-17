@@ -1,6 +1,6 @@
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  SafeAreaView, KeyboardAvoidingView, Platform, ActivityIndicator,
+  SafeAreaView, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView,
 } from 'react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
@@ -48,72 +48,75 @@ export default function Auth() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <SafeAreaView style={styles.container}>
         <View style={styles.inner}>
-          <Text style={styles.wordmark}>duo plans</Text>
-          <Text style={styles.tagline}>do things together.</Text>
+          <View style={styles.form}>
+            <Text style={styles.wordmark}>duo plans</Text>
+            <Text style={styles.tagline}>do things together.</Text>
 
-          <View style={styles.toggle}>
-            <TouchableOpacity onPress={() => switchMode('signin')}>
-              <Text style={[styles.toggleOpt, mode === 'signin' && styles.toggleActive]}>sign in</Text>
-            </TouchableOpacity>
-            <Text style={styles.toggleSep}> · </Text>
-            <TouchableOpacity onPress={() => switchMode('signup')}>
-              <Text style={[styles.toggleOpt, mode === 'signup' && styles.toggleActive]}>create account</Text>
-            </TouchableOpacity>
-          </View>
+            <View style={styles.toggle}>
+              <TouchableOpacity onPress={() => switchMode('signin')}>
+                <Text style={[styles.toggleOpt, mode === 'signin' && styles.toggleActive]}>sign in</Text>
+              </TouchableOpacity>
+              <Text style={styles.toggleSep}> · </Text>
+              <TouchableOpacity onPress={() => switchMode('signup')}>
+                <Text style={[styles.toggleOpt, mode === 'signup' && styles.toggleActive]}>create account</Text>
+              </TouchableOpacity>
+            </View>
 
-          {mode === 'signup' && (
+            {mode === 'signup' && (
+              <TextInput
+                style={[styles.input, { outline: 'none' } as any]}
+                placeholder="your name"
+                placeholderTextColor="#ccc"
+                value={displayName}
+                onChangeText={(v) => { setDisplayName(v); setAuthError(null); }}
+                autoCapitalize="words"
+              />
+            )}
             <TextInput
               style={[styles.input, { outline: 'none' } as any]}
-              placeholder="your name"
+              placeholder="email"
               placeholderTextColor="#ccc"
-              value={displayName}
-              onChangeText={(v) => { setDisplayName(v); setAuthError(null); }}
-              autoCapitalize="words"
+              value={email}
+              onChangeText={(v) => { setEmail(v); setAuthError(null); }}
+              keyboardType="email-address"
+              autoCapitalize="none"
             />
-          )}
-          <TextInput
-            style={[styles.input, { outline: 'none' } as any]}
-            placeholder="email"
-            placeholderTextColor="#ccc"
-            value={email}
-            onChangeText={(v) => { setEmail(v); setAuthError(null); }}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <TextInput
-            style={[styles.input, { outline: 'none' } as any]}
-            placeholder="password"
-            placeholderTextColor="#ccc"
-            value={password}
-            onChangeText={(v) => { setPassword(v); setAuthError(null); }}
-            secureTextEntry
-          />
+            <TextInput
+              style={[styles.input, { outline: 'none' } as any]}
+              placeholder="password"
+              placeholderTextColor="#ccc"
+              value={password}
+              onChangeText={(v) => { setPassword(v); setAuthError(null); }}
+              secureTextEntry
+            />
 
-          {authError ? <Text style={styles.errorText}>{authError}</Text> : null}
+            {authError ? <Text style={styles.errorText}>{authError}</Text> : null}
 
-          <TouchableOpacity
-            style={[styles.button, !canSubmit && styles.buttonDisabled]}
-            onPress={handleSubmit}
-            disabled={!canSubmit || loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#111" />
-            ) : (
-              <Text style={styles.buttonText}>
-                {mode === 'signin' ? 'SIGN IN' : 'CREATE ACCOUNT'}
-              </Text>
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
+            <TouchableOpacity
+              style={[styles.button, !canSubmit && styles.buttonDisabled]}
+              onPress={handleSubmit}
+              disabled={!canSubmit || loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#111" />
+              ) : (
+                <Text style={styles.buttonText}>
+                  {mode === 'signin' ? 'SIGN IN' : 'CREATE ACCOUNT'}
+                </Text>
+              )}
+            </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.googleButton} onPress={() => signInWithGoogle()}>
-            <Text style={styles.googleButtonText}>Continue with Google</Text>
-          </TouchableOpacity>
+          <View style={styles.googleSection}>
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+            <TouchableOpacity style={styles.googleButton} onPress={() => signInWithGoogle()}>
+              <Text style={styles.googleButtonText}>Continue with Google</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     </KeyboardAvoidingView>
@@ -122,7 +125,9 @@ export default function Auth() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  inner: { flex: 1, padding: 28, justifyContent: 'center' },
+  inner: { flex: 1, padding: 28, justifyContent: 'space-between' },
+  form: {},
+  googleSection: { paddingBottom: 16 },
   wordmark: {
     fontFamily: 'Georgia',
     fontSize: 30,

@@ -28,6 +28,7 @@ export default function MyPlans() {
   const [refreshCount, setRefreshCount] = useState(0);
   const [emptyQuote, setEmptyQuote] = useState('Let\'s start filling up your bucket list items.');
   const hasFetchedSuggestions = useRef(false);
+  const seenSuggestionNames = useRef<Set<string>>(new Set());
   const hasFetchedQuote = useRef(false);
 
   async function load(uid: string) {
@@ -97,8 +98,15 @@ export default function MyPlans() {
     setLoadingSuggestions(true);
     setSuggestions([]);
     try {
-      const { data, error } = await supabase.functions.invoke('suggest-activities');
-      if (!error && data?.suggestions) setSuggestions(data.suggestions);
+      const { data, error } = await supabase.functions.invoke('suggest-activities', {
+        body: { excludeNames: [...seenSuggestionNames.current] },
+      });
+      if (!error && data?.suggestions) {
+        data.suggestions.forEach((s: { name: string }) =>
+          seenSuggestionNames.current.add(s.name.toLowerCase())
+        );
+        setSuggestions(data.suggestions);
+      }
     } finally {
       setLoadingSuggestions(false);
     }
@@ -205,15 +213,14 @@ export default function MyPlans() {
         </View>
 
         {/* Plans — consolidated with filter */}
+        <View style={styles.sectionDivider} />
         <View style={styles.plansHeader}>
           <Text style={styles.sectionLabel}>
             active plans · {planFilter === 'all' ? created.length + fromExplore.length : planFilter === 'created' ? created.length : fromExplore.length}
           </Text>
-          {planFilter !== 'explore' && (
-            <TouchableOpacity onPress={() => router.push('/activity/add?source=myplans' as any)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={styles.newPlanBtn}>+ new</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity onPress={() => router.push('/activity/add?source=myplans' as any)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={styles.newPlanBtn}>+ new</Text>
+          </TouchableOpacity>
         </View>
         <View style={styles.filterRow}>
           {(['all', 'created', 'explore'] as const).map((f) => (
@@ -245,8 +252,16 @@ export default function MyPlans() {
             }
             return (
               <View style={styles.emptyState}>
-                <View style={styles.emptyIconCircle}>
-                  <Ionicons name="checkmark-done-outline" size={44} color={colors.accent} />
+                <View style={styles.emptyOuter}>
+                  <View style={styles.emptyInner}>
+                    <View style={{ position: 'relative', width: 48, height: 56 }}>
+                      <Ionicons name="document-outline" size={52} color={colors.accent} />
+                      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+                        <Ionicons name="checkmark" size={20} color={colors.accent} />
+                        <Ionicons name="heart" size={11} color={colors.accent} />
+                      </View>
+                    </View>
+                  </View>
                 </View>
                 <Text style={styles.emptyTitle}>no plans yet</Text>
                 <Text style={styles.emptyQuote}>{emptyQuote}</Text>
@@ -332,14 +347,22 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
     paddingHorizontal: 32,
   },
-  emptyIconCircle: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: colors.tint,
+  emptyOuter: {
+    width: 178,
+    height: 178,
+    borderRadius: 89,
+    backgroundColor: 'rgba(245, 238, 255, 0.55)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 28,
+  },
+  emptyInner: {
+    width: 124,
+    height: 124,
+    borderRadius: 62,
+    backgroundColor: colors.tint,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   emptyTitle: {
     fontFamily: 'Georgia',
@@ -356,7 +379,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   emptyCreateBtn: {
-    backgroundColor: '#111',
+    backgroundColor: colors.accent,
     borderRadius: 24,
     paddingVertical: 14,
     paddingHorizontal: 28,
@@ -364,6 +387,12 @@ const styles = StyleSheet.create({
   emptyCreateBtnText: { fontSize: 13, color: '#fff', letterSpacing: 0.3 },
   exploreEmpty: { paddingHorizontal: 20, paddingTop: 16 },
   exploreEmptyText: { fontSize: 13, color: colors.muted, fontStyle: 'italic' },
+  sectionDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginHorizontal: 20,
+    marginBottom: 24,
+  },
   plansHeader: {
     flexDirection: 'row',
     alignItems: 'center',

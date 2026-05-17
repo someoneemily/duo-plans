@@ -177,14 +177,9 @@ export function ActivityRow({
                 <Ionicons name="heart" size={16} color={colors.accent} />
               </TouchableOpacity>
             )}
-            {!isListMode && item.is_open && (
-              <TouchableOpacity onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="share-outline" size={16} color={shared ? colors.accent : colors.subtle} />
-              </TouchableOpacity>
-            )}
           </View>
         )}
-        {isDone && !isListMode && (
+        {!isListMode && item.is_open && (
           <TouchableOpacity onPress={handleShare} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 8 }}>
             <Ionicons name="share-outline" size={16} color={shared ? colors.accent : colors.subtle} />
           </TouchableOpacity>

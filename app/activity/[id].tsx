@@ -66,7 +66,7 @@ export default function ActivityDetail() {
   async function handleComplete() {
     if (!activity) return;
     await markAsCompleted(activity.id);
-    setActivity({ ...activity, completed_at: new Date().toISOString(), is_open: false });
+    setActivity({ ...activity, completed_at: new Date().toISOString() });
     setCelebrating(true);
   }
 

@@ -29,6 +29,7 @@ export async function getOpenActivities(excludeUserId: string): Promise<Activity
     .from('activities')
     .select('*, profiles(id, display_name, avatar_url)')
     .eq('is_open', true)
+    .is('completed_at', null)
     .neq('user_id', excludeUserId)
     .order('created_at', { ascending: false });
 
@@ -41,6 +42,7 @@ export async function getOpenActivitiesPublic(): Promise<Activity[]> {
     .from('activities')
     .select('*, profiles(id, display_name, avatar_url)')
     .eq('is_open', true)
+    .is('completed_at', null)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -124,7 +126,7 @@ export async function getPublicCompletedActivities(userId: string): Promise<Acti
 export async function markAsCompleted(activityId: string): Promise<void> {
   const { error } = await supabase
     .from('activities')
-    .update({ completed_at: new Date().toISOString(), is_open: false })
+    .update({ completed_at: new Date().toISOString() })
     .eq('id', activityId);
 
   if (error) throw error;

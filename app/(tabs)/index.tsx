@@ -84,7 +84,7 @@ export default function MyPlans() {
   async function handleComplete(item: Activity) {
     await markAsCompleted(item.id);
     setActivities((prev) => prev.map((a) =>
-      a.id === item.id ? { ...a, completed_at: new Date().toISOString(), is_open: false } : a
+      a.id === item.id ? { ...a, completed_at: new Date().toISOString() } : a
     ));
     setCelebrating(item);
   }

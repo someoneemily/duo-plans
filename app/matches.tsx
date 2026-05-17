@@ -5,7 +5,7 @@ import {
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, Stack } from 'expo-router';
 import { supabase } from '../lib/supabase';
-import { getMyMatches } from '../lib/matches';
+import { useMatches } from '../lib/useMatches';
 import { getPendingListInvites } from '../lib/sharedLists';
 import type { ListInvite } from '../lib/sharedLists';
 import { getInterestedUsers } from '../lib/activities';
@@ -25,44 +25,34 @@ function timeAgo(dateStr: string) {
 
 export default function Matches() {
   const router = useRouter();
-  const [matches, setMatches] = useState<Match[]>([]);
   const [invites, setInvites] = useState<ListInvite[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [interestedCache, setInterestedCache] = useState<Record<string, Profile[]>>({});
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
-  async function load(uid: string) {
-    try {
-      const [data, inviteData] = await Promise.all([
-        getMyMatches(uid),
-        getPendingListInvites(uid),
-      ]);
-      setMatches(data);
-      setInvites(inviteData);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }
+  const { matches, loading, refetch } = useMatches(userId);
 
   useEffect(() => {
     markMatchesSeen();
     supabase.auth.getSession().then(({ data }) => {
       const uid = data.session?.user.id ?? null;
       setUserId(uid);
-      if (uid) load(uid);
-      else setLoading(false);
+      if (!uid) return;
+      getPendingListInvites(uid).then(setInvites);
     });
   }, []);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     if (!userId) return;
     setRefreshing(true);
-    load(userId);
-  }, [userId]);
+    try {
+      await Promise.all([refetch(), getPendingListInvites(userId).then(setInvites)]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [userId, refetch]);
 
   function handleBack() {
     if (router.canGoBack()) {

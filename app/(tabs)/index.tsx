@@ -30,6 +30,7 @@ export default function MyPlans() {
   const hasFetchedSuggestions = useRef(false);
   const seenSuggestionNames = useRef<Set<string>>(new Set());
   const hasFetchedQuote = useRef(false);
+  const [refreshSignalMap, setRefreshSignalMap] = useState<Record<string, number>>({});
 
   async function load(uid: string) {
     try {
@@ -66,6 +67,33 @@ export default function MyPlans() {
       });
     }, [])
   );
+
+  useEffect(() => {
+    if (!userId) return;
+    const handler = (payload: any) => {
+      const name = (payload.new?.activity_name ?? '').toLowerCase();
+      if (!name) return;
+      setActivities((prev) => {
+        const affected = prev
+          .filter((a) => a.name.toLowerCase() === name && a.is_open && !a.completed_at)
+          .map((a) => a.id);
+        if (affected.length > 0) {
+          setRefreshSignalMap((m) => {
+            const next = { ...m };
+            affected.forEach((id) => { next[id] = (next[id] ?? 0) + 1; });
+            return next;
+          });
+        }
+        return prev;
+      });
+    };
+    const channel = supabase
+      .channel(`plans-match-signal:${userId}`)
+      .on('postgres_changes' as any, { event: 'INSERT', schema: 'public', table: 'matches', filter: `user1_id=eq.${userId}` }, handler)
+      .on('postgres_changes' as any, { event: 'INSERT', schema: 'public', table: 'matches', filter: `user2_id=eq.${userId}` }, handler)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [userId]);
 
   async function handleToggleOpen(item: Activity) {
     const newValue = !item.is_open;
@@ -284,6 +312,7 @@ export default function MyPlans() {
                   userId={userId!}
                   shade={index % 2 === 0}
                   noBorder
+                  refreshSignal={refreshSignalMap[item.id]}
                   onToggleOpen={() => handleToggleOpen(item)}
                   onComplete={() => handleComplete(item)}
                   onDelete={() => handleDelete(item)}

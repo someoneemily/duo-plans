@@ -61,6 +61,7 @@ export interface ActivityRowProps {
   addedBy?: Profile | null;    // shared-list mode: shows "added by"; also suppresses interested-users
   shade?: boolean;             // alternating row background
   noBorder?: boolean;
+  refreshSignal?: number;      // increment to trigger re-fetch of interested count
 }
 
 export function ActivityRow({
@@ -72,6 +73,7 @@ export function ActivityRow({
   addedBy,
   shade,
   noBorder,
+  refreshSignal,
 }: ActivityRowProps) {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
@@ -91,7 +93,7 @@ export function ActivityRow({
         .then(setInterested)
         .finally(() => setLoadingInterested(false));
     }
-  }, [item.id]);
+  }, [item.id, refreshSignal]);
 
   async function toggleExpand() {
     setExpanded((e) => !e);

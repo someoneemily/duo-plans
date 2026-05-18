@@ -2,7 +2,7 @@ import {
   View, Text, TextInput, FlatList, TouchableOpacity,
   StyleSheet, SafeAreaView, Alert, ActivityIndicator, RefreshControl,
 } from 'react-native';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { addActivity, getMyActivities, getOpenActivities, getOpenActivitiesPublic, deleteActivity, getInterestedUsers } from '../../lib/activities';
@@ -197,6 +197,24 @@ export default function Explore() {
       });
     }, [])
   );
+
+  useEffect(() => {
+    if (!userId) return;
+    const handler = (payload: any) => {
+      const name = (payload.new?.activity_name ?? '').toLowerCase();
+      if (!name) return;
+      setFeed((prev) => prev.map((f) =>
+        f.name.toLowerCase() === name ? { ...f, interestedCount: f.interestedCount + 1 } : f
+      ));
+      setInterestedCache((c) => { const n = { ...c }; delete n[name]; return n; });
+    };
+    const channel = supabase
+      .channel(`explore-match-signal:${userId}`)
+      .on('postgres_changes' as any, { event: 'INSERT', schema: 'public', table: 'matches', filter: `user1_id=eq.${userId}` }, handler)
+      .on('postgres_changes' as any, { event: 'INSERT', schema: 'public', table: 'matches', filter: `user2_id=eq.${userId}` }, handler)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [userId]);
 
   async function invalidateAndRefresh(nameKey: string, itemName: string) {
     setInterestedCache((c) => { const n = { ...c }; delete n[nameKey]; return n; });

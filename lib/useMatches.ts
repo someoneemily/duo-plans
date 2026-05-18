@@ -3,13 +3,6 @@ import { supabase } from './supabase';
 import { getMyMatches } from './matches';
 import type { Match } from './types';
 
-function upsertMatch(prev: Match[], incoming: Match): Match[] {
-  if (prev.some((m) => m.id === incoming.id)) {
-    return prev.map((m) => (m.id === incoming.id ? incoming : m));
-  }
-  return [incoming, ...prev];
-}
-
 export function useMatches(userId?: string | null) {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +18,10 @@ export function useMatches(userId?: string | null) {
 
     setLoading(true);
 
+    // On INSERT: refetch with profile enrichment rather than upserting the raw
+    // row, which lacks the joined other_profile data the UI needs.
+    const handleInsert = () => refetch();
+
     const channel = supabase
       .channel(`matches:${userId}`)
       .on('postgres_changes' as any, {
@@ -32,17 +29,13 @@ export function useMatches(userId?: string | null) {
         schema: 'public',
         table: 'matches',
         filter: `user1_id=eq.${userId}`,
-      }, (payload: { new: Match }) => {
-        setMatches((prev) => upsertMatch(prev, payload.new));
-      })
+      }, handleInsert)
       .on('postgres_changes' as any, {
         event: 'INSERT',
         schema: 'public',
         table: 'matches',
         filter: `user2_id=eq.${userId}`,
-      }, (payload: { new: Match }) => {
-        setMatches((prev) => upsertMatch(prev, payload.new));
-      })
+      }, handleInsert)
       .subscribe(async (status: string) => {
         if (status === 'SUBSCRIBED') {
           try {

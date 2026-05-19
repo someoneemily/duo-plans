@@ -192,56 +192,7 @@ export default function MyPlans() {
           </View>
         </View>
 
-        {/* Suggestions */}
-        <View style={{ marginBottom: 36 }}>
-          <View style={styles.suggestionHeader}>
-            <Text style={styles.sectionLabel}>suggested for you</Text>
-            <TouchableOpacity
-              onPress={refreshSuggestions}
-              disabled={loadingSuggestions}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={styles.suggestionRefreshBtn}
-            >
-              <Text style={[styles.refreshIcon, loadingSuggestions && styles.refreshIconDisabled]}>↻</Text>
-            </TouchableOpacity>
-          </View>
-          {loadingSuggestions ? (
-            <View style={styles.suggestionLoading}>
-              <ActivityIndicator size="small" color="#ccc" />
-            </View>
-          ) : suggestions.length > 0 ? (
-            <FlatList
-              data={suggestions}
-              keyExtractor={(s) => s.name}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.suggestionCarousel}
-              renderItem={({ item: s }) => (
-                <View style={styles.suggestionCard}>
-                  <Text style={styles.suggestionCardCategory}>{s.category.toLowerCase()}</Text>
-                  <Text style={styles.suggestionCardName}>{s.name}</Text>
-                  <View style={styles.suggestionCardActions}>
-                    <TouchableOpacity
-                      style={styles.suggestionAddBtn}
-                      onPress={() => handleAddSuggestion(s)}
-                    >
-                      <Text style={styles.suggestionAddText}>+ add</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => dismissSuggestion(s.name)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Text style={styles.suggestionDismiss}>×</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-            />
-          ) : null}
-        </View>
-
         {/* Plans — consolidated with filter */}
-        <View style={styles.sectionDivider} />
         <View style={styles.plansHeader}>
           <Text style={styles.sectionLabel}>
             active plans · {planFilter === 'all' ? created.length + fromExplore.length : planFilter === 'created' ? created.length : fromExplore.length}
@@ -321,6 +272,55 @@ export default function MyPlans() {
             </View>
           );
         })()}
+
+        {/* Suggestions */}
+        <View style={[styles.sectionDivider, { marginTop: 24 }]} />
+        <View style={{ marginBottom: 36 }}>
+          <View style={styles.suggestionHeader}>
+            <Text style={styles.sectionLabel}>suggested for you</Text>
+            <TouchableOpacity
+              onPress={refreshSuggestions}
+              disabled={loadingSuggestions}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={styles.suggestionRefreshBtn}
+            >
+              <Text style={[styles.refreshIcon, loadingSuggestions && styles.refreshIconDisabled]}>↻</Text>
+            </TouchableOpacity>
+          </View>
+          {loadingSuggestions ? (
+            <View style={styles.suggestionLoading}>
+              <ActivityIndicator size="small" color="#ccc" />
+            </View>
+          ) : suggestions.length > 0 ? (
+            <FlatList
+              data={suggestions}
+              keyExtractor={(s) => s.name}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.suggestionCarousel}
+              renderItem={({ item: s }) => (
+                <View style={styles.suggestionCard}>
+                  <Text style={styles.suggestionCardCategory}>{s.category.toLowerCase()}</Text>
+                  <Text style={styles.suggestionCardName}>{s.name}</Text>
+                  <View style={styles.suggestionCardActions}>
+                    <TouchableOpacity
+                      style={styles.suggestionAddBtn}
+                      onPress={() => handleAddSuggestion(s)}
+                    >
+                      <Text style={styles.suggestionAddText}>+ add</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => dismissSuggestion(s.name)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={styles.suggestionDismiss}>×</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            />
+          ) : null}
+        </View>
 
         {/* Completed */}
         {done.length > 0 && (

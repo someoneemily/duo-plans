@@ -2,7 +2,7 @@ import {
   View, Text, TextInput, FlatList, TouchableOpacity,
   StyleSheet, SafeAreaView, Alert, ActivityIndicator, RefreshControl,
 } from 'react-native';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { addActivity, getMyActivities, getOpenActivities, getOpenActivitiesPublic, deleteActivity, getInterestedUsers } from '../../lib/activities';
@@ -160,6 +160,7 @@ export default function Explore() {
   const [refreshing, setRefreshing] = useState(false);
   const [completedSelfNames, setCompletedSelfNames] = useState<Set<string>>(new Set());
   const [celebrating, setCelebrating] = useState<FeedItem | null>(null);
+  const expandedNameRef = useRef<string | null>(null);
 
   async function refresh(uid: string | null) {
     if (uid) {
@@ -205,10 +206,24 @@ export default function Explore() {
     const handler = (payload: any) => {
       const name = (payload.new?.activity_name ?? '').toLowerCase();
       if (!name) return;
-      setFeed((prev) => prev.map((f) =>
-        f.name.toLowerCase() === name ? { ...f, interestedCount: f.interestedCount + 1 } : f
-      ));
-      setInterestedCache((c) => { const n = { ...c }; delete n[name]; return n; });
+      // user1_id is the person who just hearted — they already got an optimistic +1 in
+      // handleToggleSave, so only increment for user2 (whose activity was matched).
+      const isTriggerer = payload.new?.user1_id === userId;
+      if (!isTriggerer) {
+        setFeed((prev) => prev.map((f) =>
+          f.name.toLowerCase() === name ? { ...f, interestedCount: f.interestedCount + 1 } : f
+        ));
+      }
+      // If this row is currently expanded, re-fetch the list immediately so it
+      // doesn't go blank. Otherwise just invalidate the cache.
+      if (expandedNameRef.current === name) {
+        setLoadingName(name);
+        getInterestedUsers(payload.new?.activity_name ?? name)
+          .then((users) => setInterestedCache((c) => ({ ...c, [name]: users })))
+          .finally(() => setLoadingName(null));
+      } else {
+        setInterestedCache((c) => { const n = { ...c }; delete n[name]; return n; });
+      }
     };
     const channel = supabase
       .channel(`explore-match-signal:${userId}`)
@@ -230,6 +245,8 @@ export default function Explore() {
       }
     }
   }
+
+  useEffect(() => { expandedNameRef.current = expandedName; }, [expandedName]);
 
   async function handleToggleExpand(item: FeedItem) {
     if (!userId) { router.push('/auth'); return; }

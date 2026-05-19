@@ -338,13 +338,15 @@ export default function MyPlans() {
         )}
       </ScrollView>
 
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => router.push('/activity/add?source=myplans' as any)}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.fabIcon}>+</Text>
-      </TouchableOpacity>
+      <View style={styles.fabContainer}>
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => router.push('/activity/add?source=myplans' as any)}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.fabIcon}>+</Text>
+        </TouchableOpacity>
+      </View>
 
       {celebrating && (
         <CompletionCelebration
@@ -514,10 +516,14 @@ const styles = StyleSheet.create({
   },
   suggestionAddText: { fontSize: 11, color: colors.accent, letterSpacing: 0.5 },
   suggestionDismiss: { fontSize: 18, color: colors.subtle, lineHeight: 20 },
-  fab: {
+  fabContainer: {
     position: 'absolute',
-    bottom: 28,
-    right: 24,
+    bottom: 12,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  fab: {
     width: 56,
     height: 56,
     borderRadius: 28,

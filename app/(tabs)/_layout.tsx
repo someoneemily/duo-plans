@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   fab: {
-    width: 68,
+    width: 54,
     height: 38,
     borderRadius: 19,
     backgroundColor: '#fff',

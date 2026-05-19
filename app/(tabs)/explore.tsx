@@ -9,6 +9,7 @@ import { addActivity, getMyActivities, getOpenActivities, getOpenActivitiesPubli
 import { openInstagram } from '../../lib/linking';
 import LinkText from '../../components/LinkText';
 import MatchBell from '../../components/MatchBell';
+import InterestCelebration from '../../components/InterestCelebration';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../lib/colors';
 import type { Activity, Category, Profile } from '../../lib/types';
@@ -158,6 +159,7 @@ export default function Explore() {
   const [loadingName, setLoadingName] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [completedSelfNames, setCompletedSelfNames] = useState<Set<string>>(new Set());
+  const [celebrating, setCelebrating] = useState<FeedItem | null>(null);
 
   async function refresh(uid: string | null) {
     if (uid) {
@@ -265,6 +267,7 @@ export default function Explore() {
       try {
         const newActivity = await addActivity({ userId, name: item.name, category: item.category, isOpen: true, source: 'explore' });
         setSavedMap((prev) => ({ ...prev, [key]: newActivity.id }));
+        setCelebrating(item);
       } catch (e: any) {
         setSavedMap((prev) => { const n = { ...prev }; delete n[key]; return n; });
         setFeed((prev) => prev.map((f) =>
@@ -439,6 +442,15 @@ export default function Explore() {
           );
         }}
       />
+      {celebrating && (
+        <InterestCelebration
+          visible
+          activityName={celebrating.name}
+          notes={celebrating.notes}
+          dates={celebrating.dates}
+          onDismiss={() => setCelebrating(null)}
+        />
+      )}
     </SafeAreaView>
   );
 }

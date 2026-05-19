@@ -295,11 +295,9 @@ export default function AddActivity() {
                 loadingLists ? (
                   <ActivityIndicator size="small" color={colors.subtle} style={{ marginTop: 12 }} />
                 ) : sharedLists.length === 0 ? (
-                  <View style={styles.noListsBanner}>
-                    <Text style={styles.noListsText}>
-                      You need a shared list to use this. Create one in the Friends tab first.
-                    </Text>
-                  </View>
+                  <Text style={styles.noListsText}>
+                    To share a plan with your friends, first create a shared list in your Friends tab.
+                  </Text>
                 ) : (
                   <View style={styles.listPickerOptions}>
                     {sharedLists.map((list) => (
@@ -464,14 +462,7 @@ const styles = StyleSheet.create({
   visChipText: { fontSize: 13, color: colors.label },
   visChipTextActive: { color: '#fff' },
   visHint: { fontSize: 12, color: colors.muted, marginBottom: 12 },
-  noListsBanner: {
-    backgroundColor: colors.tint,
-    borderRadius: 10,
-    padding: 14,
-    marginTop: 4,
-    marginBottom: 8,
-  },
-  noListsText: { fontSize: 13, color: colors.accent, lineHeight: 19 },
+  noListsText: { fontSize: 13, color: colors.accent, lineHeight: 19, marginBottom: 8 },
   listPickerOptions: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,

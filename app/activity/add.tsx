@@ -287,7 +287,7 @@ export default function AddActivity() {
                 {visibility === 'solo'
                   ? 'Only you can see this plan.'
                   : visibility === 'public'
-                  ? 'Others can see you\'re interested and match with you.'
+                  ? 'Others can express their interest in joining your plan.'
                   : 'Shared with people on a specific list.'}
               </Text>
 

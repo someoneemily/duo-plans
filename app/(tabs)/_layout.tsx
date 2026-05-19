@@ -78,7 +78,7 @@ function CustomTabBar({ state, navigation, inviteBadge }: BottomTabBarProps & { 
           onPress={() => router.push('/activity/add?source=myplans' as any)}
           activeOpacity={0.85}
         >
-          <Text style={styles.fabIcon}>+</Text>
+          <Ionicons name="add" size={22} color={colors.accent} />
         </TouchableOpacity>
       </View>
 
@@ -168,7 +168,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  fabIcon: { fontSize: 22, color: colors.accent, lineHeight: 24, marginTop: -1 },
   badge: {
     position: 'absolute',
     top: -4,

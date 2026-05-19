@@ -393,6 +393,11 @@ export default function Explore() {
 
               {expanded && (
                 <View style={styles.expandedBody}>
+                  {hearted && !item.isOwn && (
+                    <Text style={styles.interestedNote}>
+                      The creator will reach out if they'd like to do this together.
+                    </Text>
+                  )}
                   {item.notes ? (
                     <LinkText style={styles.expandedNotes}>{item.notes}</LinkText>
                   ) : null}
@@ -509,6 +514,7 @@ const styles = StyleSheet.create({
   personName: { fontSize: 14, color: '#111' },
   igHandle: { fontSize: 13, color: colors.accent, textDecorationLine: 'underline' },
   noOneText: { fontSize: 13, color: colors.muted, fontStyle: 'italic' },
+  interestedNote: { fontSize: 13, color: colors.muted, fontStyle: 'italic', lineHeight: 19 },
   empty: { paddingHorizontal: 20, paddingTop: 40 },
   emptyText: { fontSize: 14, color: colors.muted, fontStyle: 'italic' },
 });

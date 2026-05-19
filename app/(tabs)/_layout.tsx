@@ -1,7 +1,9 @@
 import { Tabs, useRouter } from 'expo-router';
-import { StyleSheet, AppState } from 'react-native';
+import { StyleSheet, AppState, View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { supabase } from '../../lib/supabase';
 import { refreshMatchBadge, startMatchRealtimeListener } from '../../lib/matchBadge';
 import { refreshInviteBadge, subscribeInviteBadge, startInviteRealtimeListener } from '../../lib/inviteBadge';
@@ -16,12 +18,74 @@ const TAB_ICONS: Record<string, { active: IoniconsName; inactive: IoniconsName }
   profile: { active: 'person-circle',    inactive: 'person-circle-outline' },
 };
 
+const TAB_LABELS: Record<string, string> = {
+  index: 'plans', explore: 'explore', friends: 'friends', profile: 'profile',
+};
+
 const TAB_HREFS: Record<string, string> = {
   index:   '/(tabs)',
   explore: '/(tabs)/explore',
   friends: '/(tabs)/friends',
   profile: '/(tabs)/profile',
 };
+
+function CustomTabBar({ state, navigation, inviteBadge }: BottomTabBarProps & { inviteBadge: number }) {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+
+  const routes = state.routes; // [index, explore, friends, profile]
+  const leftRoutes  = [routes[0], routes[1]];
+  const rightRoutes = [routes[2], routes[3]];
+
+  function handlePress(routeName: string, isFocused: boolean) {
+    if (!isFocused) router.replace(TAB_HREFS[routeName] ?? '/(tabs)/');
+  }
+
+  function renderTab(route: typeof routes[0]) {
+    const isFocused = state.routes[state.index].name === route.name;
+    const icons = TAB_ICONS[route.name];
+    const iconName = isFocused ? icons?.active : icons?.inactive;
+    const color = isFocused ? '#111' : colors.muted;
+    const badge = route.name === 'friends' && inviteBadge > 0 ? inviteBadge : null;
+
+    return (
+      <TouchableOpacity
+        key={route.name}
+        style={styles.tabItem}
+        onPress={() => handlePress(route.name, isFocused)}
+        activeOpacity={0.7}
+      >
+        <View>
+          {iconName ? <Ionicons name={iconName} size={22} color={color} /> : null}
+          {badge ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{badge}</Text>
+            </View>
+          ) : null}
+        </View>
+        <Text style={[styles.tabLabel, { color }]}>{TAB_LABELS[route.name]}</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <View style={[styles.tabBar, { paddingBottom: insets.bottom }]}>
+      {leftRoutes.map(renderTab)}
+
+      <View style={styles.fabSlot}>
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => router.push('/activity/add?source=myplans' as any)}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.fabIcon}>+</Text>
+        </TouchableOpacity>
+      </View>
+
+      {rightRoutes.map(renderTab)}
+    </View>
+  );
+}
 
 export default function TabsLayout() {
   const router = useRouter();
@@ -57,39 +121,12 @@ export default function TabsLayout() {
 
   return (
     <Tabs
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: '#111',
-        tabBarInactiveTintColor: colors.muted,
-        tabBarLabelStyle: styles.tabLabel,
-        tabBarIcon: ({ focused, color }) => {
-          const icons = TAB_ICONS[route.name];
-          const name = focused ? icons?.active : icons?.inactive;
-          return name ? <Ionicons name={name} size={22} color={color} /> : null;
-        },
-      })}
-      screenListeners={({ navigation, route }) => ({
-        tabPress: (e) => {
-          const state = navigation.getState();
-          const isFocused = state.routes[state.index].name === route.name;
-          if (!isFocused) {
-            e.preventDefault();
-            router.replace(TAB_HREFS[route.name] ?? '/(tabs)/');
-          }
-        },
-      })}
+      tabBar={(props) => <CustomTabBar {...props} inviteBadge={inviteBadge} />}
+      screenOptions={{ headerShown: false }}
     >
       <Tabs.Screen name="index"   options={{ title: 'plans' }} />
       <Tabs.Screen name="explore" options={{ title: 'explore' }} />
-      <Tabs.Screen
-        name="friends"
-        options={{
-          title: 'friends',
-          tabBarBadge: inviteBadge > 0 ? inviteBadge : undefined,
-          tabBarBadgeStyle: styles.badge,
-        }}
-      />
+      <Tabs.Screen name="friends" options={{ title: 'friends' }} />
       <Tabs.Screen name="profile" options={{ title: 'profile' }} />
     </Tabs>
   );
@@ -97,21 +134,55 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   tabBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#fff',
-    borderTopColor: '#ececec',
     borderTopWidth: 1,
-    elevation: 0,
-    shadowOpacity: 0,
+    borderTopColor: '#ececec',
     height: 60,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    paddingTop: 6,
   },
   tabLabel: {
     fontSize: 10,
     fontWeight: '400',
     letterSpacing: 0.3,
-    marginBottom: 6,
   },
-  badge: {
+  fabSlot: {
+    width: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fab: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: colors.accent,
-    fontSize: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
   },
+  fabIcon: { fontSize: 26, color: '#fff', lineHeight: 30, marginTop: -2 },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -8,
+    backgroundColor: colors.accent,
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeText: { fontSize: 9, color: '#fff', fontWeight: '600' },
 });

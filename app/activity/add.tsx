@@ -271,7 +271,7 @@ export default function AddActivity() {
           {/* Visibility picker — create mode only */}
           {!isListAdd && !isEditMode && (
             <View style={styles.visibilitySection}>
-              <Text style={styles.label}>visibility</Text>
+              <Text style={styles.label}>type</Text>
               <View style={styles.visibilityRow}>
                 {(['solo', 'public', 'friends'] as const).map((v) => (
                   <TouchableOpacity

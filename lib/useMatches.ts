@@ -28,12 +28,6 @@ export function useMatches(userId?: string | null) {
         event: 'INSERT',
         schema: 'public',
         table: 'matches',
-        filter: `user1_id=eq.${userId}`,
-      }, handleInsert)
-      .on('postgres_changes' as any, {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'matches',
         filter: `user2_id=eq.${userId}`,
       }, handleInsert)
       .subscribe(async (status: string) => {

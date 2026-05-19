@@ -21,7 +21,7 @@ export async function refreshMatchBadge(userId: string): Promise<void> {
   let query = supabase
     .from('matches')
     .select('id', { count: 'exact', head: true })
-    .or(`user1_id.eq.${userId},user2_id.eq.${userId}`);
+    .eq('user2_id', userId);
   if (lastSeen) query = query.gt('created_at', lastSeen);
   const { count } = await query;
   _count = count ?? 0;
@@ -41,12 +41,6 @@ export function startMatchRealtimeListener(userId: string): () => void {
   const handler = () => refreshMatchBadge(userId);
   _channel = supabase
     .channel(`match-badge-${userId}`)
-    .on('postgres_changes' as any, {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'matches',
-      filter: `user1_id=eq.${userId}`,
-    }, handler)
     .on('postgres_changes' as any, {
       event: 'INSERT',
       schema: 'public',

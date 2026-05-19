@@ -89,7 +89,6 @@ export default function MyPlans() {
     };
     const channel = supabase
       .channel(`plans-match-signal:${userId}`)
-      .on('postgres_changes' as any, { event: 'INSERT', schema: 'public', table: 'matches', filter: `user1_id=eq.${userId}` }, handler)
       .on('postgres_changes' as any, { event: 'INSERT', schema: 'public', table: 'matches', filter: `user2_id=eq.${userId}` }, handler)
       .subscribe();
     return () => { supabase.removeChannel(channel); };

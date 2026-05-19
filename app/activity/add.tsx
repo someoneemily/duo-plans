@@ -153,6 +153,8 @@ export default function AddActivity() {
           router.back();
         } else if (targetListId) {
           router.replace(`/friends/${targetListId}` as any);
+        } else if (isFromMyPlans) {
+          router.replace('/(tabs)' as any);
         } else {
           router.back();
         }

@@ -57,25 +57,30 @@ export default function AddActivity() {
   const isListAdd = !isEditMode && !!listId;
   const isFromMyPlans = !isEditMode && !isListAdd && source === 'myplans';
   const isListOnly = prefillIsListOnly === 'true';
+
+  type Visibility = 'solo' | 'public' | 'friends';
   const [name, setName] = useState(prefillName ?? '');
   const [category, setCategory] = useState<Category | ''>((prefillCategory as Category) ?? '');
   const [notes, setNotes] = useState(prefillNotes ?? '');
-  const [isOpen, setIsOpen] = useState(
-    isEditMode ? prefillIsOpen === 'true' : !isListAdd
-  );
+  const [isOpen, setIsOpen] = useState(prefillIsOpen === 'true');
+  const [visibility, setVisibility] = useState<Visibility>(() => {
+    if (isEditMode) return prefillIsOpen === 'true' ? 'public' : 'solo';
+    return 'solo';
+  });
   const [dates, setDates] = useState<string[]>(
     prefillDates ? prefillDates.split(',').filter(Boolean) : []
   );
   const [saving, setSaving] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [visibilityError, setVisibilityError] = useState<string | null>(null);
   const [sharedLists, setSharedLists] = useState<SharedList[]>([]);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [loadingLists, setLoadingLists] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isFromMyPlans) return;
+    if (isListAdd || isEditMode) return;
     setLoadingLists(true);
     supabase.auth.getSession().then(async ({ data }) => {
       const uid = data.session?.user.id;
@@ -108,6 +113,10 @@ export default function AddActivity() {
     else setNameError(null);
     if (!category) { setCategoryError('Please pick a category.'); ok = false; }
     else setCategoryError(null);
+    if (!isListAdd && !isEditMode && visibility === 'friends' && !selectedListId) {
+      setVisibilityError('Select a shared list to continue.');
+      ok = false;
+    } else setVisibilityError(null);
     return ok;
   }
 
@@ -126,13 +135,14 @@ export default function AddActivity() {
           isOpen: isListOnly ? false : isOpen,
         });
       } else {
-        const targetListId = isListAdd ? listId! : (selectedListId ?? null);
+        const targetListId = isListAdd ? listId! : (visibility === 'friends' ? selectedListId : null);
+        const effectiveIsOpen = !targetListId && visibility === 'public';
         const activity = await addActivity({
           userId: session.user.id,
           name: name.trim(),
           category: category as Category,
           notes: notes.trim() || undefined,
-          isOpen: targetListId ? false : isOpen,
+          isOpen: effectiveIsOpen,
           isListOnly: !!targetListId,
           dates: dates.length > 0 ? dates : undefined,
         });
@@ -141,8 +151,8 @@ export default function AddActivity() {
         }
         if (isListAdd && listId) {
           router.back();
-        } else if (selectedListId) {
-          router.replace(`/friends/${selectedListId}` as any);
+        } else if (targetListId) {
+          router.replace(`/friends/${targetListId}` as any);
         } else {
           router.back();
         }
@@ -258,42 +268,61 @@ export default function AddActivity() {
             )
           }
 
-          {isFromMyPlans && (
-            <View style={styles.listPickerSection}>
-              <Text style={styles.label}>add to a shared list</Text>
-              {loadingLists ? (
-                <ActivityIndicator size="small" color={colors.subtle} style={{ marginBottom: 12 }} />
-              ) : sharedLists.length === 0 ? (
-                <Text style={styles.listPickerEmpty}>no shared lists yet</Text>
-              ) : (
-                <View style={styles.listPickerOptions}>
+          {/* Visibility picker — create mode only */}
+          {!isListAdd && !isEditMode && (
+            <View style={styles.visibilitySection}>
+              <Text style={styles.label}>visibility</Text>
+              <View style={styles.visibilityRow}>
+                {(['solo', 'public', 'friends'] as const).map((v) => (
                   <TouchableOpacity
-                    style={[styles.listPickerRow, selectedListId === null && styles.listPickerRowSelected]}
-                    onPress={() => setSelectedListId(null)}
+                    key={v}
+                    style={[styles.visChip, visibility === v && styles.visChipActive]}
+                    onPress={() => { setVisibility(v); setVisibilityError(null); }}
                   >
-                    <Text style={[styles.listPickerLabel, selectedListId === null && styles.listPickerLabelSelected]}>
-                      none
-                    </Text>
-                    {selectedListId === null && <Text style={styles.listPickerCheck}>✓</Text>}
+                    <Text style={[styles.visChipText, visibility === v && styles.visChipTextActive]}>{v}</Text>
                   </TouchableOpacity>
-                  {sharedLists.map((list) => (
-                    <TouchableOpacity
-                      key={list.id}
-                      style={[styles.listPickerRow, selectedListId === list.id && styles.listPickerRowSelected]}
-                      onPress={() => setSelectedListId(list.id === selectedListId ? null : list.id)}
-                    >
-                      <Text style={[styles.listPickerLabel, selectedListId === list.id && styles.listPickerLabelSelected]}>
-                        {listLabel(list, currentUserId ?? '')}
-                      </Text>
-                      {selectedListId === list.id && <Text style={styles.listPickerCheck}>✓</Text>}
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                ))}
+              </View>
+              <Text style={styles.visHint}>
+                {visibility === 'solo'
+                  ? 'Only you can see this plan.'
+                  : visibility === 'public'
+                  ? 'Others can see you\'re interested and match with you.'
+                  : 'Shared with people on a specific list.'}
+              </Text>
+
+              {visibility === 'friends' && (
+                loadingLists ? (
+                  <ActivityIndicator size="small" color={colors.subtle} style={{ marginTop: 12 }} />
+                ) : sharedLists.length === 0 ? (
+                  <View style={styles.noListsBanner}>
+                    <Text style={styles.noListsText}>
+                      You need a shared list to use this. Create one in the Friends tab first.
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.listPickerOptions}>
+                    {sharedLists.map((list) => (
+                      <TouchableOpacity
+                        key={list.id}
+                        style={[styles.listPickerRow, selectedListId === list.id && styles.listPickerRowSelected]}
+                        onPress={() => { setSelectedListId(list.id === selectedListId ? null : list.id); setVisibilityError(null); }}
+                      >
+                        <Text style={[styles.listPickerLabel, selectedListId === list.id && styles.listPickerLabelSelected]}>
+                          {listLabel(list, currentUserId ?? '')}
+                        </Text>
+                        {selectedListId === list.id && <Text style={styles.listPickerCheck}>✓</Text>}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )
               )}
+              {visibilityError ? <Text style={styles.fieldError}>{visibilityError}</Text> : null}
             </View>
           )}
 
-          {!isListAdd && !isListOnly && !selectedListId && (
+          {/* Edit mode: simple solo/public toggle */}
+          {isEditMode && !isListOnly && (
             <TouchableOpacity style={styles.openRow} onPress={() => setIsOpen(!isOpen)}>
               <View>
                 <Text style={styles.openLabel}>open to doing with someone</Text>
@@ -422,8 +451,27 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2,
   },
   thumbOn: { alignSelf: 'flex-end' },
-  listPickerSection: { marginTop: 8, marginBottom: 8 },
-  listPickerEmpty: { fontSize: 13, color: colors.muted, fontStyle: 'italic', marginBottom: 16 },
+  visibilitySection: { marginTop: 8, marginBottom: 8 },
+  visibilityRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+  visChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  visChipActive: { backgroundColor: '#111', borderColor: '#111' },
+  visChipText: { fontSize: 13, color: colors.label },
+  visChipTextActive: { color: '#fff' },
+  visHint: { fontSize: 12, color: colors.muted, marginBottom: 12 },
+  noListsBanner: {
+    backgroundColor: colors.tint,
+    borderRadius: 10,
+    padding: 14,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  noListsText: { fontSize: 13, color: colors.accent, lineHeight: 19 },
   listPickerOptions: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,

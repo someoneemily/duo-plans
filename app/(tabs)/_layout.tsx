@@ -69,7 +69,7 @@ function CustomTabBar({ state, navigation, inviteBadge }: BottomTabBarProps & { 
   }
 
   return (
-    <View style={[styles.tabBar, { paddingBottom: insets.bottom }]}>
+    <View style={[styles.tabBar, { paddingBottom: insets.bottom, paddingLeft: insets.left + 4, paddingRight: insets.right + 4 }]}>
       {leftRoutes.map(renderTab)}
 
       <View style={styles.fabSlot}>

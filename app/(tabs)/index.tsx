@@ -246,9 +246,6 @@ export default function MyPlans() {
           <Text style={styles.sectionLabel}>
             active plans · {planFilter === 'all' ? created.length + fromExplore.length : planFilter === 'created' ? created.length : fromExplore.length}
           </Text>
-          <TouchableOpacity onPress={() => router.push('/activity/add?source=myplans' as any)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.newPlanBtn}>+ new</Text>
-          </TouchableOpacity>
         </View>
         <View style={styles.filterRow}>
           {(['all', 'created', 'explore'] as const).map((f) => (
@@ -340,6 +337,14 @@ export default function MyPlans() {
           </>
         )}
       </ScrollView>
+
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => router.push('/activity/add?source=myplans' as any)}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.fabIcon}>+</Text>
+      </TouchableOpacity>
 
       {celebrating && (
         <CompletionCelebration
@@ -509,6 +514,23 @@ const styles = StyleSheet.create({
   },
   suggestionAddText: { fontSize: 11, color: colors.accent, letterSpacing: 0.5 },
   suggestionDismiss: { fontSize: 18, color: colors.subtle, lineHeight: 20 },
+  fab: {
+    position: 'absolute',
+    bottom: 28,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  fabIcon: { fontSize: 28, color: '#fff', lineHeight: 32, marginTop: -2 },
   refreshIconDisabled: { color: colors.disabled },
   planName: { fontSize: 15, color: '#111' },
 

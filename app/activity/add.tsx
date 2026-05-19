@@ -288,7 +288,7 @@ export default function AddActivity() {
                   ? 'Only you can see this plan.'
                   : visibility === 'public'
                   ? 'Others can express their interest in joining your plan.'
-                  : 'Shared with people on a specific list.'}
+                  : 'Share to one of your friends lists.'}
               </Text>
 
               {visibility === 'friends' && (
